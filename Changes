@@ -1,0 +1,11 @@
+Revision history for Panotools::Script.
+
+0.02
+    - Add Transform() method to rotate project files
+    - various bugfixes
+
+0.01
+    - rewritten in less crappy OO style (Bruno Postle)
+
+0.00 Sat May 04 13:01:00 2002
+    - various half working stuff (Bruno Postle)

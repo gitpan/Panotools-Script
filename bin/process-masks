@@ -1,0 +1,83 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use File::Temp qw/tempdir/;
+use File::Spec::Functions;
+use File::Copy;
+
+my $tempdir = tempdir (CLEANUP => 1);
+
+my $maskdir = catfile ($tempdir, 'mask');
+my $pushdir = catfile ($tempdir, 'push');
+my $workdir = catfile ($tempdir, 'work');
+
+mkdir $maskdir;
+mkdir $pushdir;
+mkdir $workdir;
+
+for my $file (@ARGV)
+{
+    my $maskdir_file = catfile ($maskdir, $file);
+    my $pushdir_file = catfile ($pushdir, $file);
+    my $workdir_file = catfile ($workdir, $file);
+    `convert -threshold 99% $file $maskdir_file`;
+    `convert -negate $maskdir_file $pushdir_file`;
+    copy ($file, $workdir_file);
+}
+
+for my $file (@ARGV)
+{
+    my $tempdir_file = catfile ($tempdir, $file);
+    my $workdir_file = catfile ($workdir, $file);
+
+    for my $temp (@ARGV)
+    {
+        next if ($temp eq $file);
+        my $pushdir_temp = catfile ($pushdir, $temp);
+        my $maskdir_temp = catfile ($maskdir, $temp);
+        `composite $pushdir_temp $workdir_file $maskdir_temp $tempdir_file`;
+        move ($tempdir_file, $workdir_file);
+    }
+
+    move ($file, "$file.bak.tif");
+    move ($workdir_file, $file);
+}
+
+__END__
+
+=head1 NAME
+
+process-masks - Preprocessor for enblend masks
+
+=head1 Synopsis
+
+  process-masks image1_mask.tif [image2_mask.tif ...]
+
+=head1 DESCRIPTION
+
+Transfers white areas in each mask (indicating pixels to keep) as black areas
+in other masks.  Areas to be blended need to be indicated as shades of grey.
+
+Pass mask tif files as program arguments, originals are renamed and
+replaced by processed files.
+
+Requires ImageMagick.
+
+Note masks can be any bit depth, but with no alpha channel.
+
+L<http://www.bruno.postle.net/neatstuff/enblend-mask/>
+L<http://enblend.sourceforge.net/>
+
+=head1 License
+
+This software is distributed under the same terms as enblend itself.
+
+=head1 See Also
+
+L<perl>, L<Panotools::Script>
+
+=head1 Author
+
+October 2006, Bruno Postle <bruno AT postle.net>
+

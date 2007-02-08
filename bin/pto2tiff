@@ -1,0 +1,63 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use File::Spec;
+
+my @files = @ARGV;
+@files = map File::Spec->rel2abs ($_), @files;
+
+for my $pto (@files)
+{
+    my $stub = $pto;
+    $stub =~ s/\.pto$//i;
+
+    use Panotools::Script;
+
+    my $p = new Panotools::Script;
+    $p->{stitcher} = 'nona';
+    $p->Read ($pto);
+    $p->{panorama}->Set (n => '"TIFF_m r:CROP c:DEFLATE"');
+    $p->Stitch ($stub .'_');
+
+    my $args = '-a -l 29';
+    $args .= ' -w' if $p->{panorama}->{v} == 360;
+
+    `enblend-mask $args -o $stub.tif $stub\_????.tif`;
+    `convert $stub.tif $stub.jpg`;
+
+    print STDERR "Done: $stub.tif\n";
+}
+
+__END__
+
+=head1 NAME
+
+pto2tiff - Batch process hugin project files
+
+=head1 Synopsis
+
+  pto2tiff project1.pto [project2.pto ...]
+
+=head1 DESCRIPTION
+
+The nona stitcher can be used for batch stitching hugin pto projects.  This
+tool is a simple wrapper that forces the output format into a suitable input
+format for enblend, it then runs enblend (actually enblend-mask) with
+appropriate arguments to generate a single blended output.
+
+L<http://hugin.sourceforge.net/>
+L<http://enblend.sourceforge.net/>
+
+=head1 License
+
+This software is distributed under the same terms as enblend and hugin.
+
+=head1 See Also
+
+L<perl>, L<Panotools::Script>
+
+=head1 Author
+
+Bruno Postle <bruno AT postle.net>
+

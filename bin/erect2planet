@@ -1,0 +1,68 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use File::Spec;
+use Panotools::Script;
+
+my $erect = shift or die "usage\n  $0 equirectangular.tif";
+$erect = File::Spec->rel2abs ($erect);
+
+my $sgraphic = $erect;
+
+$sgraphic =~ s/\.([[:alnum:]]+)$/-sgraphic/;
+
+my ($width, $height);
+
+{
+    use Image::Magick;
+    my $image = new Image::Magick;
+    $image->Read ($erect);
+    ($width, $height) = $image->Get ('width', 'height');
+}
+
+my $face = $width;
+
+my $stereographic = new Panotools::Script;
+$stereographic->{panorama}->Set (v => 270, f => 4, u => 0, w => $face, h => $face, n => '"TIFF"');
+
+$stereographic->{stitcher} = 'nona';
+
+$stereographic->{image}->[0] = new Panotools::Script::Line::Image;
+
+$stereographic->{image}->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => 0, y => 0, n => "\"$erect\"");
+$stereographic->Stitch ($sgraphic);
+
+__END__
+
+=head1 NAME
+
+erect2planet - Extract a stereographic 'little planet' from an equirectangular image
+
+=head1 Synopsis
+
+  erect2planet equirectangular.tif
+
+=head1 DESCRIPTION
+
+Generates a suitably sized stereographic image from a 360 degree
+equirectangular image.  Input is in any image format understood by hugin,
+output is in TIFF format with a field of view of 270 degrees.
+
+The output filename is derived automatically from the input filename with
+'-sgraphic' appended.
+
+L<http://hugin.sourceforge.net/>
+
+=head1 License
+
+This software is distributed under the same terms as hugin.
+
+=head1 See Also
+
+L<perl>, L<Panotools::Script>
+
+=head1 Author
+
+Bruno Postle <bruno AT postle.net>
+

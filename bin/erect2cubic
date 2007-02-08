@@ -1,0 +1,48 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use File::Spec;
+use Panotools::Script;
+
+my $erect = shift or die "usage\n  $0 equirectangular.tif";
+$erect = File::Spec->rel2abs ($erect);
+my $cwd = File::Spec->rel2abs (File::Spec->curdir);
+
+my ($width, $height);
+
+{
+    use Image::Magick;
+    my $image = new Image::Magick;
+    $image->Read ($erect);
+    ($width, $height) = $image->Get ('width', 'height');
+}
+
+my $face = int ($width / 3.1418);
+
+my $scratch = new Panotools::Script;
+$scratch->{panorama}->Set (v => 90, f => 0, u => 0, w => $face, h => $face, n => '"TIFF"');
+
+$scratch->{stitcher} = 'nona';
+
+$scratch->{image}->[0] = new Panotools::Script::Line::Image;
+
+$scratch->{image}->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => 0, y => 0, n => "\"$erect\"");
+$scratch->Stitch (File::Spec->catfile ($cwd, 'front.tif'));
+
+$scratch->Transform (0, 0, -90);
+$scratch->Stitch (File::Spec->catfile ($cwd, 'right.tif'));
+
+$scratch->Transform (0, 0, -90);
+$scratch->Stitch (File::Spec->catfile ($cwd, 'back.tif'));
+
+$scratch->Transform (0, 0, -90);
+$scratch->Stitch (File::Spec->catfile ($cwd, 'left.tif'));
+
+$scratch->Transform (0, 0, -90);
+$scratch->Transform (0, -90, 0);
+$scratch->Stitch (File::Spec->catfile ($cwd, 'up.tif'));
+
+$scratch->Transform (0, 180, 0);
+$scratch->Stitch (File::Spec->catfile ($cwd, 'down.tif'));
+

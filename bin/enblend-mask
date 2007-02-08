@@ -1,0 +1,84 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use File::Temp qw/tempdir/;
+use File::Spec;
+
+my @parameters;
+my @files;
+my $tempdir = tempdir (CLEANUP => 1);
+
+while (@ARGV)
+{
+    my $arg = shift @ARGV;
+    if ($arg =~ /-o/)
+    {
+        push @parameters, $arg;
+        push @parameters, shift @ARGV;
+        next;
+    }
+    if ($arg =~ /\.tif$/i) {push @files, $arg}
+    else {push @parameters, $arg}
+}
+
+my $index = 0;
+
+for my $file (@files)
+{
+    my $mask = $file;
+    $mask =~ s/\.tif$/_mask.tif/i;
+    if (-e $mask)
+    {
+        print STDERR "Using mask $mask\n";
+        my $tempfile = File::Spec->catfile ($tempdir, "$index.tif");
+        `composite -compose CopyOpacity $mask $file $tempfile`;
+        push @parameters, $tempfile;
+        $index++;
+    }
+    else
+    {
+        push @parameters, $file;
+    }
+}
+
+my $exec = 'enblend '. (join ' ', @parameters);
+
+`$exec`;
+
+__END__
+
+=head1 NAME
+
+enblend-mask - Wrapper around enblend for managing external masks
+
+=head1 Synopsis
+
+  enblend-mask [options] -o OUTPUT INPUTS
+
+=head1 DESCRIPTION
+
+Wrapper around enblend.  Usage is exactly the same as for enblend,
+except that if files named '<filename>_mask.tif' exist, they are
+inserted as alpha masks before blending.
+
+Note masks can be any bit depth, but with no alpha channel.  Black indicates
+areas to be ignored, any other colour indicates areas that may be blended.
+
+Requires enblend and ImageMagick.
+
+L<http://www.bruno.postle.net/neatstuff/enblend-mask/>
+L<http://enblend.sourceforge.net/>
+
+=head1 License
+
+This software is distributed under the same terms as enblend itself.
+
+=head1 See Also
+
+L<perl>, L<Panotools::Script>
+
+=head1 Author
+
+October 2006, Bruno Postle <bruno AT postle.net>
+
