@@ -1,5 +1,11 @@
 Revision history for Panotools::Script.
 
+0.04
+    - add erect2qtvr
+
+0.03
+    - add jpeg2qtvr
+
 0.02
     - Add Transform() method to rotate project files
     - various bugfixes

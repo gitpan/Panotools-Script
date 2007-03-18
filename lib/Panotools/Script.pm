@@ -35,7 +35,7 @@ use Math::Trig;
 use File::Temp qw/ tempfile /;
 use File::Spec;
 
-our $VERSION = 0.03;
+our $VERSION = 0.04;
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};

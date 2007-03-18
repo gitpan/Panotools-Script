@@ -4,6 +4,7 @@ bin/enblend-mask
 bin/erect2cubic
 bin/erect2planet
 bin/jpeg2qtvr
+bin/erect2qtvr
 bin/process-masks
 bin/pto2tiff
 bin/transform-pano

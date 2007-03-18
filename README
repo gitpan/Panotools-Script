@@ -23,7 +23,8 @@ Dependencies
 Math::Matrix
 Image::Magick
 
-This module requires panotools and/or hugin.
+This module requires panotools and/or hugin.  Some of the scripts require
+ImageMagick command-line tools and enblend.
 
 
 TODO

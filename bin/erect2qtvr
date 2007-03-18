@@ -1,0 +1,202 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use File::Spec;
+use Panotools::Script;
+
+use File::Temp qw/tempdir/;
+
+my $opts = {};
+
+my $qtvr_opts = '';
+
+while (@ARGV)
+{
+    my ($key, $value) = split ('=', shift);
+    $opts->{$key} = $value;
+    $qtvr_opts .= $key .'='. quotemeta ($value) .' ';
+}
+
+my $cleanup = $opts->{'--cleanup'} || 1;
+my $quality = $opts->{'--quality'} || 70;
+my $pitch = $opts->{'--pitch'} || 0;
+my $erect = $opts->{'--erect'} or die
+
+"usage\n  $0 --erect=mypanorama.tif
+
+Generates a cubic QTVR named mypanorama.mov.  Input needs to be a full
+360 degree equirectangular image in PNG, JPEG or TIFF format.
+
+Options:
+
+  --pitch    pre-rotates the entire panorama.  eg. if your panorama
+             has the nadir in the centre set this to -90
+  --quality  JPEG quality for QTVR tiles, defaults to 70
+  --cleanup  set to '0' to keep temporary files, defaults to '1'
+
+A subset of jpeg2qtvr options are also accepted:
+
+  --date     date in seconds since January 1st 1970, defaults to current time
+  --name     title of the panorama
+  --width    preferred window width, defaults to 1024
+  --height   preferred window height, defaults to 768
+  --pan      initial pan (yaw), defaults to 0.0 degrees
+  --tilt     initial tilt (pitch), defaults to 0.0 degrees
+  --fov      initial vertical angle of view, defaults to 60 degrees
+  --min-fov  minimum vertical angle of view, defaults to 10 degrees
+  --max-fov  maximum vertical angle of view, defaults to 120 degrees";
+
+$erect = File::Spec->rel2abs ($erect);
+my $cwd = File::Spec->rel2abs (File::Spec->curdir);
+my $tempdir = tempdir (CLEANUP => $cleanup);
+
+my $stub = $erect;
+$stub =~ s/\.([[:alnum:]]+)$//;
+
+my $prefix = File::Spec->catfile ($tempdir, 'cube');
+
+# get the width and height of the input image
+
+my ($width, $height);
+
+{
+    use Image::Magick;
+    my $image = new Image::Magick;
+    $image->Read ($erect);
+    ($width, $height) = $image->Get ('width', 'height');
+}
+
+# calculate an 'ideal' cubeface size
+
+my $face = 8 * int (int ($width / 3.1416) / 8);
+
+# generate JPEG cubefaces
+
+my $scratch = new Panotools::Script;
+$scratch->{panorama}->Set (v => 90, f => 0, u => 0, w => $face, h => $face, n => '"TIFF"');
+
+$scratch->{stitcher} = 'nona';
+
+$scratch->{image}->[0] = new Panotools::Script::Line::Image;
+
+$scratch->{image}->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => $pitch, y => 0, n => "\"$erect\"");
+
+$scratch->Stitch ("$prefix-0.tif");
+
+$scratch->Transform (0, 0, -90);
+$scratch->Stitch ("$prefix-1.tif");
+
+$scratch->Transform (0, 0, -90);
+$scratch->Stitch ("$prefix-2.tif");
+
+$scratch->Transform (0, 0, -90);
+$scratch->Stitch ("$prefix-3.tif");
+
+$scratch->Transform (0, 0, -90);
+$scratch->Transform (0, -90, 0);
+$scratch->Stitch ("$prefix-4.tif");
+
+$scratch->Transform (0, 180, 0);
+$scratch->Stitch ("$prefix-5.tif");
+
+for my $index (0 .. 5)
+{
+    `convert -quality $quality $prefix-$index.tif $prefix-$index.jpg`;
+}
+
+# fisheye cubefaces for preview track
+
+$scratch->{panorama}->Set (v => 100, f => 3);
+
+$scratch->{image}->[0]->Set (r => 0, p => $pitch, y => 0);
+$scratch->Stitch ("$prefix-preview-0.tif");
+
+$scratch->Transform (0, 0, -90);
+$scratch->Stitch ("$prefix-preview-1.tif");
+
+$scratch->Transform (0, 0, -90);
+$scratch->Stitch ("$prefix-preview-2.tif");
+
+$scratch->Transform (0, 0, -90);
+$scratch->Stitch ("$prefix-preview-3.tif");
+
+$scratch->Transform (0, 0, -90);
+$scratch->Transform (0, -90, 0);
+$scratch->Stitch ("$prefix-preview-4.tif");
+
+$scratch->Transform (0, 180, 0);
+$scratch->Stitch ("$prefix-preview-5.tif");
+
+$scratch->{panorama}->Set (v => 90, f => 0, w => 256, h => 256, n => '"JPEG"');
+
+for my $index (0 .. 5)
+{
+    # generate JPEG preview cubefaces
+    `mogrify -geometry 32x32 $prefix-preview-$index.tif`;
+    $scratch->{image}->[0]->Set (w => 32, h => 32, v => 100, f => 3, r => 0, p => 0, y => 0, n => "\"$prefix-preview-$index.tif\"");
+    $scratch->Stitch ("$prefix-preview-$index.jpg");
+    `mogrify -quality 80 $prefix-preview-$index.jpg`;
+}
+
+print "Tempdir: $tempdir\n" unless $cleanup;
+
+`jpeg2qtvr $qtvr_opts --prefix=$prefix- --preview=$prefix-preview- --outfile=$stub.mov`;
+
+__END__
+
+=head1 NAME
+
+erect2qtvr - Assemble a Quicktime QTVR file from an equirectangular image
+
+=head1 Synopsis
+
+  erect2qtvr --erect=mypanorama.tif
+
+=head1 DESCRIPTION
+
+This tool generates a cubic QTVR from a single equirectangular image, see
+L<http://wiki.panotools.org/Equirectangular_Projection> for more details
+of the input file format.
+
+A QTVR file is created with the same path as the input image except with a .mov
+extension.
+
+=head1 Calling syntax
+
+  erect2qtvr [options] --erect=mypanorama.tif
+
+Options:
+
+  --pitch    pre-rotates the entire panorama.  eg. if your panorama
+             has the nadir in the centre set this to -90
+  --quality  JPEG quality for QTVR tiles, defaults to 70
+  --cleanup  set to '0' to keep temporary files, defaults to '1'
+
+A subset of jpeg2qtvr options are also accepted:
+
+  --date     date in seconds since January 1st 1970, defaults to current time
+  --name     title of the panorama
+  --width    preferred window width, defaults to 1024
+  --height   preferred window height, defaults to 768
+  --pan      initial pan (yaw), defaults to 0.0 degrees
+  --tilt     initial tilt (pitch), defaults to 0.0 degrees
+  --fov      initial vertical angle of view, defaults to 60 degrees
+  --min-fov  minimum vertical angle of view, defaults to 10 degrees
+  --max-fov  maximum vertical angle of view, defaults to 120 degrees";
+
+=head1 License
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version.
+
+=head1 See Also
+
+L<perl>, L<Panotools::Script>
+
+=head1 Author
+
+March 2007, Bruno Postle <bruno AT postle.net>
+
