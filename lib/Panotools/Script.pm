@@ -35,7 +35,7 @@ use Math::Trig;
 use File::Temp qw/ tempfile /;
 use File::Spec;
 
-our $VERSION = 0.04;
+our $VERSION = 0.05;
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -182,7 +182,8 @@ sub Optimise
     my $self = shift;
     my ($fh, $tempfile) = tempfile (SUFFIX => '.txt', UNLINK => $CLEANUP);
     $self->Write ($tempfile);
-    `$self->{optimiser} $tempfile`;
+    my @args = ($self->{optimiser}, $tempfile);
+    system (@args);
     return 0 unless ($? == 0);
     my $try = new Panotools::Script;
     $try->Read ($tempfile) || return 0;
@@ -285,7 +286,8 @@ sub Stitch
     $self->Write ($tempfile, $vector);
     my $cwd = File::Spec->curdir;
     chdir (File::Spec->tmpdir);
-    `$self->{stitcher} $tempfile -o $outfile`;
+    my @args = ($self->{stitcher}, '-o', $outfile, $tempfile);
+    system (@args);
     chdir ($cwd);
     return 0 unless ($? == 0);
     return 1;

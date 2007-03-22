@@ -1,5 +1,8 @@
 Revision history for Panotools::Script.
 
+0.05
+    - change order of nona parameters for BSD (Milan Knizek)
+
 0.04
     - add erect2qtvr
 
