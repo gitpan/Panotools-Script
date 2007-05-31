@@ -21,8 +21,8 @@ for my $file (@ARGV)
     my $maskdir_file = catfile ($maskdir, $file);
     my $pushdir_file = catfile ($pushdir, $file);
     my $workdir_file = catfile ($workdir, $file);
-    `convert -threshold 99% $file $maskdir_file`;
-    `convert -negate $maskdir_file $pushdir_file`;
+    system ('convert', '-threshold', '99%', $file, $maskdir_file);
+    system ('convert', '-negate', $maskdir_file, $pushdir_file);
     copy ($file, $workdir_file);
 }
 
@@ -36,7 +36,7 @@ for my $file (@ARGV)
         next if ($temp eq $file);
         my $pushdir_temp = catfile ($pushdir, $temp);
         my $maskdir_temp = catfile ($maskdir, $temp);
-        `composite $pushdir_temp $workdir_file $maskdir_temp $tempdir_file`;
+        system ('composite', $pushdir_temp, $workdir_file, $maskdir_temp, $tempdir_file);
         move ($tempdir_file, $workdir_file);
     }
 

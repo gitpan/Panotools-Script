@@ -15,13 +15,13 @@ for my $pto (@files)
     use Panotools::Script;
 
     my $p = new Panotools::Script;
-    $p->{stitcher} = 'nona';
+    $p->{stitcher} = 'nona-mask';
     $p->Read ($pto);
-    $p->{panorama}->Set (n => '"TIFF_m r:CROP c:DEFLATE"');
+    $p->Panorama->Set (n => '"TIFF_m r:CROP c:DEFLATE"');
     $p->Stitch ($stub .'_');
 
     my $args = '-a -l 29';
-    $args .= ' -w' if $p->{panorama}->{v} == 360;
+    $args .= ' -w' if $p->Panorama->{v} == 360;
 
     `enblend-mask $args -o $stub.tif $stub\_????.tif`;
     `convert $stub.tif $stub.jpg`;

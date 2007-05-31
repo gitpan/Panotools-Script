@@ -21,6 +21,9 @@ while (@ARGV)
 my $cleanup = $opts->{'--cleanup'} || 1;
 my $quality = $opts->{'--quality'} || 70;
 my $pitch = $opts->{'--pitch'} || 0;
+my $yaw = $opts->{'--yaw'} || 0;
+my $outfile = $opts->{'--outfile'} || undef;
+$outfile = File::Spec->rel2abs ($outfile) if defined ($outfile);
 my $erect = $opts->{'--erect'} or die
 
 "usage\n  $0 --erect=mypanorama.tif
@@ -30,8 +33,10 @@ Generates a cubic QTVR named mypanorama.mov.  Input needs to be a full
 
 Options:
 
+  --erect    Filename of equirectangular input (required)
   --pitch    pre-rotates the entire panorama.  eg. if your panorama
              has the nadir in the centre set this to -90
+  --yaw      pre-rotates the entire panorama.
   --quality  JPEG quality for QTVR tiles, defaults to 70
   --cleanup  set to '0' to keep temporary files, defaults to '1'
 
@@ -39,6 +44,7 @@ A subset of jpeg2qtvr options are also accepted:
 
   --date     date in seconds since January 1st 1970, defaults to current time
   --name     title of the panorama
+  --outfile  output filename, defaults to input filename with .mov extension
   --width    preferred window width, defaults to 1024
   --height   preferred window height, defaults to 768
   --pan      initial pan (yaw), defaults to 0.0 degrees
@@ -74,13 +80,13 @@ my $face = 8 * int (int ($width / 3.1416) / 8);
 # generate JPEG cubefaces
 
 my $scratch = new Panotools::Script;
-$scratch->{panorama}->Set (v => 90, f => 0, u => 0, w => $face, h => $face, n => '"TIFF"');
+$scratch->Panorama->Set (v => 90, f => 0, u => 0, w => $face, h => $face, n => '"TIFF"');
 
 $scratch->{stitcher} = 'nona';
 
-$scratch->{image}->[0] = new Panotools::Script::Line::Image;
+$scratch->Image->[0] = new Panotools::Script::Line::Image;
 
-$scratch->{image}->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => $pitch, y => 0, n => "\"$erect\"");
+$scratch->Image->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => $pitch, y => $yaw, n => "\"$erect\"");
 
 $scratch->Stitch ("$prefix-0.tif");
 
@@ -102,14 +108,14 @@ $scratch->Stitch ("$prefix-5.tif");
 
 for my $index (0 .. 5)
 {
-    `convert -quality $quality $prefix-$index.tif $prefix-$index.jpg`;
+    system ('convert', '-quality', $quality, "$prefix-$index.tif", "$prefix-$index.jpg");
 }
 
 # fisheye cubefaces for preview track
 
-$scratch->{panorama}->Set (v => 100, f => 3);
+$scratch->Panorama->Set (v => 100, f => 3);
 
-$scratch->{image}->[0]->Set (r => 0, p => $pitch, y => 0);
+$scratch->Image->[0]->Set (r => 0, p => $pitch, y => $yaw);
 $scratch->Stitch ("$prefix-preview-0.tif");
 
 $scratch->Transform (0, 0, -90);
@@ -128,20 +134,22 @@ $scratch->Stitch ("$prefix-preview-4.tif");
 $scratch->Transform (0, 180, 0);
 $scratch->Stitch ("$prefix-preview-5.tif");
 
-$scratch->{panorama}->Set (v => 90, f => 0, w => 256, h => 256, n => '"JPEG"');
+$scratch->Panorama->Set (v => 90, f => 0, w => 256, h => 256, n => '"JPEG"');
 
 for my $index (0 .. 5)
 {
     # generate JPEG preview cubefaces
-    `mogrify -geometry 32x32 $prefix-preview-$index.tif`;
-    $scratch->{image}->[0]->Set (w => 32, h => 32, v => 100, f => 3, r => 0, p => 0, y => 0, n => "\"$prefix-preview-$index.tif\"");
+    system ('mogrify', '-geometry', '32x32', "$prefix-preview-$index.tif");
+    $scratch->Image->[0]->Set (w => 32, h => 32, v => 100, f => 3, r => 0, p => 0, y => 0, n => "\"$prefix-preview-$index.tif\"");
     $scratch->Stitch ("$prefix-preview-$index.jpg");
-    `mogrify -quality 80 $prefix-preview-$index.jpg`;
+    system ('mogrify', '-quality', $quality, "$prefix-preview-$index.jpg");
 }
 
 print "Tempdir: $tempdir\n" unless $cleanup;
 
-`jpeg2qtvr $qtvr_opts --prefix=$prefix- --preview=$prefix-preview- --outfile=$stub.mov`;
+$outfile = "$stub.mov" unless (defined $outfile);
+
+`jpeg2qtvr $qtvr_opts --prefix=$prefix- --preview=$prefix-preview- --outfile="$outfile"`;
 
 __END__
 
@@ -168,8 +176,10 @@ extension.
 
 Options:
 
+  --erect    Filename of equirectangular input (required)
   --pitch    pre-rotates the entire panorama.  eg. if your panorama
              has the nadir in the centre set this to -90
+  --yaw      pre-rotates the entire panorama.
   --quality  JPEG quality for QTVR tiles, defaults to 70
   --cleanup  set to '0' to keep temporary files, defaults to '1'
 
@@ -177,6 +187,7 @@ A subset of jpeg2qtvr options are also accepted:
 
   --date     date in seconds since January 1st 1970, defaults to current time
   --name     title of the panorama
+  --outfile  output filename, defaults to input filename with mov extension
   --width    preferred window width, defaults to 1024
   --height   preferred window height, defaults to 768
   --pan      initial pan (yaw), defaults to 0.0 degrees

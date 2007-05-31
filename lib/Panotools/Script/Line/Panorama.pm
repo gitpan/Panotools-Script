@@ -55,6 +55,14 @@ Panorama parameters are described by a 'p' line
   d1           attempt color correction with no brightness change using image number as anchor
                    Do not use more than one of k, d, b.This is new method of correcting
 
+  E1           exposure value for final panorama
+  R1           stitching mode: 0: normal LDR mode, 1: HDR mode
+  T"UINT8"     bitdepth of output images, possible values are
+               UINT8  -  8 bit unsigned
+               UINT16 - 16 bit unsigned
+               FLOAT  - 32 bit floating point
+               By default the bit depth of the input images is used.
+
 =cut
 
 use vars qw /@ISA/;
@@ -70,7 +78,7 @@ sub _defaults
     $self->{f} = "2";
 }
 
-sub _valid { '^([bdfhknuvw])(.*)' }
+sub _valid { '^([bdfhknuvwERT])(.*)' }
 
 sub Identifier
 {

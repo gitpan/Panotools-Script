@@ -35,7 +35,9 @@ use Math::Trig;
 use File::Temp qw/ tempfile /;
 use File::Spec;
 
-our $VERSION = 0.05;
+use Storable qw/ dclone /;
+
+our $VERSION = 0.06;
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -65,8 +67,8 @@ sub _defaults
     $self->{output} = [];
     $self->{control} = [];
     $self->{controlmorph} = [];
-    $self->{stitcher} = 'PTmender';  # nona, PTmender, PTStitcher
-    $self->{optimiser} = 'PTOptimizer'; # PTOptimizer, autooptimiser
+    $self->{stitcher} = $ENV{STITCHER} || 'nona';  # nona, PTmender, PTStitcher, Tmender
+    $self->{optimiser} = $ENV{OPTIMISER} || 'autooptimiser'; # PToptimizer PTOptimizer, autooptimiser
     $self->{basedir} = File::Spec->rel2abs (File::Spec->curdir);
 }
 
@@ -91,32 +93,32 @@ sub Read
     for my $line (@raw)
     {
         $line =~ s/(\r|\n)//g;
-        $self->{mode}->Parse ($line) if ($line =~ /^m /);
-        $self->{panorama}->Parse ($line) if ($line =~ /^p /);
-        $self->{variable}->Parse ($line) if ($line =~ /^v /);
+        $self->Mode->Parse ($line) if ($line =~ /^m /);
+        $self->Panorama->Parse ($line) if ($line =~ /^p /);
+        $self->Variable->Parse ($line) if ($line =~ /^v /);
         if ($line =~ /^i /)
         {
             my $image = new Panotools::Script::Line::Image;
             $image->Parse ($line);
-            push @{$self->{image}}, $image;
+            push @{$self->Image}, $image;
         }
         if ($line =~ /^o /)
         {
             my $output = new Panotools::Script::Line::Output;
             $output->Parse ($line);
-            push @{$self->{output}}, $output;
+            push @{$self->Output}, $output;
         }
         if ($line =~ /^c /)
         {
             my $control = new Panotools::Script::Line::Control;
             $control->Parse ($line);
-            push @{$self->{control}}, $control;
+            push @{$self->Control}, $control;
         }
         if ($line =~ /^C /)
         {
             my $controlmorph = new Panotools::Script::Line::ControlMorph;
             $controlmorph->Parse ($line);
-            push @{$self->{controlmorph}}, $controlmorph;
+            push @{$self->ControlMorph}, $controlmorph;
         }
     }
     $self->Output2Image;
@@ -142,31 +144,127 @@ sub Write
     my $vector = shift || '';
     open FILE, ">", $path or die "cannot write-open $path";
     print FILE "# Created by ". (ref $self) ." $VERSION\n\n";
-    print FILE $self->{panorama}->Assemble;
-    print FILE $self->{mode}->Assemble;
+    print FILE $self->Panorama->Assemble;
+    print FILE $self->Mode->Assemble;
     print FILE "\n# Image lines\n";
-    for my $image (@{$self->{image}})
+    for my $image (@{$self->Image})
     {
          print FILE $image->Assemble ($vector);
     }
     print FILE "\n# Variable lines\n";
-    print FILE $self->{variable}->Assemble;
+    print FILE $self->Variable->Assemble;
     print FILE "\n# Control point lines\n";
-    for my $control (@{$self->{control}})
+    for my $control (@{$self->Control})
     {
          print FILE $control->Assemble;
     }
-    for my $controlmorph (@{$self->{controlmorph}})
+    for my $controlmorph (@{$self->ControlMorph})
     {
          print FILE $controlmorph->Assemble;
     }
     print FILE "\n*\n";
     print FILE "\n# Output image lines\n";
-    for my $output (@{$self->{output}})
+    for my $output (@{$self->Output})
     {
          print FILE $output->Assemble ($vector);
     }
     close FILE;
+}
+
+=pod
+
+Clone a script object
+
+ $clone = $p->Clone;
+
+=cut
+
+sub Clone
+{
+    my $self = shift;
+    dclone ($self);
+}
+
+=pod
+
+Preview a project (requires ImageMagick)
+
+ $p->Preview;
+
+=cut
+
+sub Preview
+{
+    my $self = shift;
+    my ($fh, $tempfile) = tempfile (SUFFIX => '.jpg', UNLINK => $CLEANUP);
+    my $aspect = $self->Panorama->{w} / $self->Panorama->{h};
+    my $clone = $self->Clone;
+    my $height = sqrt (40000 / $aspect);
+    my $width = $aspect * $height;
+    $clone->Panorama->Set (w => int ($width), h => int ($height), n => '"JPEG"');
+    $clone->Stitch ($tempfile);
+    system ('display', '-sample', '200%', $tempfile);
+}
+
+=pod
+
+Access various sections of the scriptfile:
+
+ $p->Mode;          # a L<Panotools::Script::Line::Mode> object
+ $p->Panorama;      # a L<Panotools::Script::Line::Panorama> object
+ $p->Variable;      # a L<Panotools::Script::Line::Variable> object
+
+=cut
+
+sub Mode
+{
+    my $self = shift;
+    $self->{mode};
+}
+
+sub Panorama
+{
+    my $self = shift;
+    $self->{panorama};
+}
+
+sub Variable
+{
+    my $self = shift;
+    $self->{variable};
+}
+
+=pod
+
+ $p->Image;         # an array of L<Panotools::Script::Line::Image> objects
+ $p->Output;        # an array of L<Panotools::Script::Line::Output> objects
+ $p->Control;       # an array of L<Panotools::Script::Line::Control> objects
+ $p->ControlMorph;  # an array of L<Panotools::Script::Line::ControlMorph> objects
+
+=cut
+
+sub Image
+{
+    my $self = shift;
+    $self->{image};
+}
+
+sub Output
+{
+    my $self = shift;
+    $self->{output};
+}
+
+sub Control
+{
+    my $self = shift;
+    $self->{control};
+}
+
+sub ControlMorph
+{
+    my $self = shift;
+    $self->{controlmorph};
 }
 
 =pod
@@ -180,14 +278,37 @@ Optimise image parameters in a project:
 sub Optimise
 {
     my $self = shift;
+    $self->Image2Output;
     my ($fh, $tempfile) = tempfile (SUFFIX => '.txt', UNLINK => $CLEANUP);
-    $self->Write ($tempfile);
-    my @args = ($self->{optimiser}, $tempfile);
-    system (@args);
-    return 0 unless ($? == 0);
+    my ($fh2, $outfile) = tempfile (SUFFIX => '.txt', UNLINK => $CLEANUP);
+    my $clone = $self->Clone;
+    for my $image (@{$clone->Image})
+    {
+        $image->_sanitise_ptoptimizer;
+    }
+    $clone->Write ($tempfile);
     my $try = new Panotools::Script;
-    $try->Read ($tempfile) || return 0;
-    $self->{output} = $try->{output};
+    if ($self->{optimiser} =~ /autooptimiser/)
+    {
+        system ($self->{optimiser}, '-o', $outfile, $tempfile);
+        return 0 unless ($? == 0);
+        $try->Read ($outfile) || return 0;
+        $try->Image2Output;
+    }
+    else
+    {
+        system ($self->{optimiser}, $tempfile);
+        return 0 unless ($? == 0);
+        $try->Read ($tempfile) || return 0;
+    }
+    for my $index (0 .. scalar (@{$try->Output}) - 1)
+    {
+        for my $key (keys %{$try->Output->[$index]})
+        {
+            my $value = $try->Output->[$index]->{$key};
+            $self->Output->[$index]->Set ($key => $value);
+        }
+    }
     $self->Output2Image;
     return 1;
 }
@@ -206,7 +327,7 @@ sub Transform
     my ($roll, $pitch, $yaw) = @_;
     my @transform_rpy = map (deg2rad ($_), ($roll, $pitch, $yaw));
     my $transform_matrix = rollpitchyaw2matrix (@transform_rpy);
-    for my $image (@{$self->{image}})
+    for my $image (@{$self->Image})
     {
         my @rpy = map (deg2rad ($_), ($image->{r}, $image->{p}, $image->{y}));
         my $matrix = rollpitchyaw2matrix (@rpy);
@@ -235,13 +356,13 @@ Update the 'image' lines based on 'output' lines and vice-versa like so:
 sub Output2Image
 {
     my $self = shift;
-    for my $index (0 .. (@{$self->{output}} - 1))
+    for my $index (0 .. (@{$self->Output} - 1))
     {
-        for my $entry (keys %{$self->{output}->[$index]})
+        for my $entry (keys %{$self->Output->[$index]})
         {
-            $self->{image}->[$index] = new Panotools::Script::Line::Image unless (defined $self->{image}->[$index]);
-            $self->{image}->[$index]->{$entry} = $self->{output}->[$index]->{$entry}
-                unless (defined $self->{image}->[$index]->{$entry} and $self->{image}->[$index]->{$entry} =~ /=/);
+            $self->Image->[$index] = new Panotools::Script::Line::Image unless (defined $self->Image->[$index]);
+            $self->Image->[$index]->{$entry} = $self->Output->[$index]->{$entry}
+                unless (defined $self->Image->[$index]->{$entry} and $self->Image->[$index]->{$entry} =~ /=/);
         }
     }
 }
@@ -249,20 +370,20 @@ sub Output2Image
 sub Image2Output
 {
     my $self = shift;
-    for my $index (0 .. (@{$self->{image}} - 1))
+    for my $index (0 .. (@{$self->Image} - 1))
     {
-        for my $entry (keys %{$self->{image}->[$index]})
+        for my $entry (keys %{$self->Image->[$index]})
         {
-            $self->{output}->[$index] = new Panotools::Script::Line::Output unless (defined $self->{output}->[$index]);
-            unless ($self->{image}->[$index]->{$entry} =~ /=/)
+            $self->Output->[$index] = new Panotools::Script::Line::Output unless (defined $self->Output->[$index]);
+            unless ($self->Image->[$index]->{$entry} =~ /=/)
             {
-                $self->{output}->[$index]->{$entry} = $self->{image}->[$index]->{$entry};
+                $self->Output->[$index]->{$entry} = $self->Image->[$index]->{$entry};
             }
             else
             {
-                my $base = $self->{image}->[$index]->{$entry};
+                my $base = $self->Image->[$index]->{$entry};
                 $base =~ s/=//;
-                $self->{output}->[$index]->{$entry} = $self->{image}->[$base]->{$entry};
+                $self->Output->[$index]->{$entry} = $self->Image->[$base]->{$entry};
             }
         }
     }
@@ -280,14 +401,14 @@ sub Stitch
 {
     my $self = shift;
     my $outfile = shift;
+    my @options = @_;
     my ($fh, $tempfile) = tempfile (SUFFIX => '.txt', UNLINK => $CLEANUP);
     $self->Image2Output;
     my $vector = File::Spec->abs2rel ($self->{basedir}, File::Spec->tmpdir);
     $self->Write ($tempfile, $vector);
     my $cwd = File::Spec->curdir;
     chdir (File::Spec->tmpdir);
-    my @args = ($self->{stitcher}, '-o', $outfile, $tempfile);
-    system (@args);
+    system ($self->{stitcher}, @options, '-o', $outfile, $tempfile);
     chdir ($cwd);
     return 0 unless ($? == 0);
     return 1;

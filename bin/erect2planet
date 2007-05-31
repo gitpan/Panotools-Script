@@ -8,6 +8,8 @@ use Panotools::Script;
 my $erect = shift or die "usage\n  $0 equirectangular.tif";
 $erect = File::Spec->rel2abs ($erect);
 
+# FIXME should accept transform parameters
+
 my $sgraphic = $erect;
 
 $sgraphic =~ s/\.([[:alnum:]]+)$/-sgraphic/;
@@ -24,13 +26,13 @@ my ($width, $height);
 my $face = $width;
 
 my $stereographic = new Panotools::Script;
-$stereographic->{panorama}->Set (v => 270, f => 4, u => 0, w => $face, h => $face, n => '"TIFF"');
+$stereographic->Panorama->Set (v => 270, f => 4, u => 0, w => $face, h => $face, n => '"TIFF"');
 
 $stereographic->{stitcher} = 'nona';
 
-$stereographic->{image}->[0] = new Panotools::Script::Line::Image;
+$stereographic->Image->[0] = new Panotools::Script::Line::Image;
 
-$stereographic->{image}->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => 0, y => 0, n => "\"$erect\"");
+$stereographic->Image->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => 0, y => 0, n => "\"$erect\"");
 $stereographic->Stitch ($sgraphic);
 
 __END__

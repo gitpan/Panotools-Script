@@ -12,11 +12,11 @@ use_ok ('Panotools::Script');
 my $p = new Panotools::Script;
 
 # set projection to cylindrical
-$p->{panorama}->Set (f => 1, w => 600, h => 600, n => 'JPEG');
+$p->Panorama->Set (f => 1, w => 600, h => 600, n => 'JPEG');
 
 {
-    $p->{image}->[0] = new Panotools::Script::Line::Image;
-    $p->{image}->[0]->Set (w => 600, h => 300,
+    $p->Image->[0] = new Panotools::Script::Line::Image;
+    $p->Image->[0]->Set (w => 600, h => 300,
                            f => 4,
                            v => 360,
                            y => 180, p => 0, r => 0,

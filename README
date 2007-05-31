@@ -23,8 +23,8 @@ Dependencies
 Math::Matrix
 Image::Magick
 
-This module requires panotools and/or hugin.  Some of the scripts require
-ImageMagick command-line tools and enblend.
+This module requires 'autooptimiser' and 'nona' from hugin.  Some of
+the scripts require 'enblend' and ImageMagick command-line tools.
 
 
 TODO
@@ -37,13 +37,15 @@ TODO
 * straighten
 * open/save lens profiles
 * Delete control points
-* Scale project
+* error distance
+* jpeg2qtvr calculate window size from fov and cubeface size
+* fix OS X bug with paths
 
 
 Copyright and licence
 ---------------------
 
-This module free software and is distributed under the
+This module is free software and is distributed under the
 same license as Perl itself.
 
 Copyright (C) 2002 Bruno Postle

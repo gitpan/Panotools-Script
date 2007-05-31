@@ -50,6 +50,16 @@ Basically the same format as an 'o' line.
                   i_blue = K2a * i_blue + K2b
                 This correction is applied after the flatfield flatfield correction.
  
+  Eev          exposure of image in EV (exposure values)
+  Er           white balance factor for red channel
+  Eb           white balance factor for blue channel
+
+  Ra           EMoR response model from the Computer Vision Lab at Columbia University
+  Rb           This models the camera response curve
+  Rc
+  Rd
+  Re
+
   Vm           vignetting correction mode (default 0):
                    0: no vignetting correction
                    1: radial vignetting correction (see j,k,l,o options)
@@ -117,7 +127,19 @@ sub _defaults
     my $self = shift;
 }
 
-sub _valid { return '^([abcdefghnoprtvwy]|[SCXYZ]|K[0-2][ab]|V[abcdfmxy])(.*)' }
+sub _valid { return '^([abcdefghnprtvwy]|[SCXYZ]|K[0-2][ab]|V[abcdfmxy]|Eev|E[rb]|R[abcde])(.*)' }
+
+sub _valid_ptoptimizer { return '^([abcdefghnprtvwySC])(.*)' }
+
+sub _sanitise_ptoptimizer
+{
+    my $self = shift;
+    my $valid = $self->_valid_ptoptimizer;
+    for my $key (keys %{$self})
+    {
+        delete $self->{$key} unless (grep /$valid/, $key);
+    }
+}
 
 sub Identifier
 {

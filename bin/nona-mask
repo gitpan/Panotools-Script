@@ -1,0 +1,122 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use File::Temp qw/tempdir/;
+use File::Spec;
+use Panotools::Script;
+
+my @parameters;
+my @files;
+my $outfile;
+my $script;
+my $tempdir = tempdir (CLEANUP => 1);
+
+# parse command-line parameters
+
+while (@ARGV)
+{
+    my $arg = shift @ARGV;
+    if ($arg =~ /-o/)
+    {
+        $outfile = File::Spec->rel2abs (shift @ARGV);
+        $script = File::Spec->rel2abs (shift @ARGV);
+        next;
+    }
+    if ($arg =~ /\.[[:alnum:]]+$/i) {push @files, $arg}
+    else {push @parameters, $arg}
+}
+
+die "Usage: $0 [options] -o output project_file (image files)" unless ($outfile && $script);
+
+my $pano = new Panotools::Script;
+$pano->Read ($script);
+
+my $index = 0;
+
+# update input filenames
+
+for my $file (@files)
+{
+    $pano->Image->[$index]->{n} = "\"$file\"";
+    $index++;
+}
+
+for my $image (@{$pano->Image})
+{
+    my $tempfile = File::Spec->catfile ($tempdir, "$index.tif");
+    my $name = $image->{n};
+    $name =~ s/(^"|"$)//g;
+    my $prefix = $name;
+    $prefix =~ s/\.[[:alnum:]]+$//i;
+
+    # prefer TIF or SVG versions if they exist
+    $name = "$prefix.tif" if (-e "$prefix.tif");
+    $name = "$prefix.svg" if (-e "$prefix.svg");
+
+    my $mask = $prefix . '_mask.tif';
+    if (-e $mask)
+    {
+        print STDERR "Using mask $mask\n";
+        system ('composite', '-compose', 'CopyOpacity', $mask, $name, $tempfile);
+        $image->{n} = "\"$tempfile\"";
+    }
+    elsif ($name =~ /\.svg$/i)
+    {
+        print STDERR "Converting $image->{n} to TIFF\n";
+        system ('convert', '-background', 'transparent', $name, $tempfile);
+        $image->{n} = "\"$tempfile\"";
+    }
+    else
+    {
+        $image->{n} = "\"$name\"";
+    }
+    $index++;
+}
+
+$pano->Stitch ($outfile, @parameters);
+
+__END__
+
+=head1 NAME
+
+nona-mask - Wrapper around nona for managing external masks
+
+=head1 Synopsis
+
+  nona-mask [options] -o output project_file (image files)
+
+=head1 DESCRIPTION
+
+Wrapper around nona.  Usage is exactly the same as for nona,
+except that if files named '<prefix>_mask.tif' exist, they are
+inserted as alpha masks before stitching.
+
+Some examples of valid image pairs:
+
+  DSC_1234.tif DSC_1234_mask.tif
+  IMG_5678.JPG IMG_5678_mask.tif
+
+Note masks can be any bit depth, but must have no alpha channel.  Black
+indicates areas to be ignored, any other colour indicates areas that may be
+blended.
+
+Note also that only masks need to be TIFF files, input images can be any
+filetype supported by nona.
+
+Requires Panotools::Script, nona and ImageMagick.
+
+L<http://hugin.sourceforge.net/>
+
+=head1 License
+
+This software is distributed under the same terms as nona itself.
+
+=head1 See Also
+
+L<perl>, L<Panotools::Script>
+
+=head1 Author
+
+April 2007, Bruno Postle <bruno AT postle.net>
+

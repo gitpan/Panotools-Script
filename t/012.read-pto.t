@@ -17,14 +17,5 @@ my ($fh, $tempfile) = tempfile (SUFFIX => '.txt', UNLINK => 1);
 ok ($p->Write ($tempfile), "script written to $tempfile");
 }
 
-TODO: {
-local $TODO = 'PTOptimizer doesn\'t like Va0 Vb0 in image lines';
-
 ok ($p->Optimise, 'Optimisation succeeds');
 
-}
-
-# set projection to Mercator
-$p->{panorama}->{f} = '5';
-
-ok ($p->Optimise == 0, 'Optimisation fails');

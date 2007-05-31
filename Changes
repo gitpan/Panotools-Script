@@ -1,5 +1,17 @@
 Revision history for Panotools::Script.
 
+0.06
+    - blend any input filetypes with enblend-mask
+    - prefer svg to tiff with enblend-mask
+    - add nona-mask
+    - allow setting STITCHER and OPTIMISER environment
+    - pass options to Stitch()
+    - New Clone() and Preview() methods
+    - New accessor methods: Mode(), Panorama(), Variable(), Image(), Output(), Control(), ControlMorph()
+    - Only pass optimisable variables to PTOptimizer but default to autooptimiser
+    - New exposure, white balance, output mode, bitdepth and camera response parameters supported by hugin/nona
+    - erect2qtvr add --yaw and --outfile options
+
 0.05
     - change order of nona parameters for BSD (Milan Knizek)
 

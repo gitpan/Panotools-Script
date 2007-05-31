@@ -18,7 +18,7 @@ while (@ARGV)
         push @parameters, shift @ARGV;
         next;
     }
-    if ($arg =~ /\.tif$/i) {push @files, $arg}
+    if ($arg =~ /\.[[:alnum:]]+$/i) {push @files, $arg}
     else {push @parameters, $arg}
 }
 
@@ -26,25 +26,32 @@ my $index = 0;
 
 for my $file (@files)
 {
+    my $tempfile = File::Spec->catfile ($tempdir, "$index.tif");
     my $mask = $file;
-    $mask =~ s/\.tif$/_mask.tif/i;
+    $mask =~ s/\.[[:alnum:]]+$/_mask.tif/i;
+    my $svg = $file;
+    $svg =~ s/\.[[:alnum:]]+$/.svg/i;
+    $file = $svg if (-e $svg);
     if (-e $mask)
     {
         print STDERR "Using mask $mask\n";
-        my $tempfile = File::Spec->catfile ($tempdir, "$index.tif");
-        `composite -compose CopyOpacity $mask $file $tempfile`;
+        system ('composite', '-compose', 'CopyOpacity', $mask, $file, $tempfile);
         push @parameters, $tempfile;
-        $index++;
+    }
+    elsif ($file !~ /\.tif$/i)
+    {
+        print STDERR "Converting $file to TIFF\n";
+        system ('convert', '-background', 'transparent', $file, $tempfile);
+        push @parameters, $tempfile;
     }
     else
     {
         push @parameters, $file;
     }
+    $index++;
 }
 
-my $exec = 'enblend '. (join ' ', @parameters);
-
-`$exec`;
+system ('enblend', @parameters);
 
 __END__
 
@@ -59,11 +66,20 @@ enblend-mask - Wrapper around enblend for managing external masks
 =head1 DESCRIPTION
 
 Wrapper around enblend.  Usage is exactly the same as for enblend,
-except that if files named '<filename>_mask.tif' exist, they are
+except that if files named '<prefix>_mask.tif' exist, they are
 inserted as alpha masks before blending.
 
-Note masks can be any bit depth, but with no alpha channel.  Black indicates
-areas to be ignored, any other colour indicates areas that may be blended.
+Some examples of valid image pairs:
+
+  image0000.tif image0000_mask.tif
+  foo.jpg foo_mask.tif
+
+Note masks can be any bit depth, but must have no alpha channel.  Black
+indicates areas to be ignored, any other colour indicates areas that may be
+blended.
+
+Note also that only masks need to be TIFF files, input images can be any
+filetype supported by ImageMagick.
 
 Requires enblend and ImageMagick.
 
