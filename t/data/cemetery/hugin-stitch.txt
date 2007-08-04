@@ -1,7 +1,7 @@
 # PTStitcher script, written by hugin
 
-p f2 w950 h320 v184  n"TIFF c:NONE"
-m g1 i0 f0
+p f2 w950 h320 v184  E6.95316e-310 R0 T n"TIFF c:NONE"
+m g1 i0 f0 m2 p0.00784314
 
 # output image lines
 o w239 h320 f0 a0 b-0.0258324 c0 d0 e0 g0 p0 r0 t0 v45.0372 y-35  u10 m0 n"dscn4905.jpg"

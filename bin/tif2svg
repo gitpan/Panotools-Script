@@ -1,0 +1,45 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Image::Magick;
+
+my @files = grep (/\.tif$/i, @ARGV);
+
+exit unless @files;
+
+my $stub0 = $files[0];
+$stub0 =~ s/\.tif$//i;
+my $stub1 = $files[-1];
+$stub1 =~ s/\.tif$//i;
+$stub1 =~ s/.*(\/|\\)//;
+
+my $image = new Image::Magick;
+$image->Read ($files[0]);
+my ($width, $height) = $image->Get ('width', 'height');
+
+open (SVG, ">$stub0-$stub1.svg");
+
+print SVG qq|<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+xmlns:xlink="http://www.w3.org/1999/xlink"
+xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+width="$width" height="$height" version="1.0">|;
+
+my $index = 0;
+for my $file (@files)
+{
+    $file =~ s/.*(\/|\\)//;
+    print SVG qq|
+    <g inkscape:groupmode="layer"
+    id="layer$index"
+    inkscape:label="$index">
+        <image y="0" x="0" id="image$index" style="display:inline"
+        width="$width" height="$height" xlink:href="$file" />
+    </g>|;
+    $index++;
+}
+
+print SVG qq|
+</svg>|
+

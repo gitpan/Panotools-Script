@@ -3,7 +3,13 @@ use ExtUtils::MakeMaker;
 # the contents of the Makefile that is written.
 WriteMakefile(
     'NAME'              => 'Panotools::Script',
-    'EXE_FILES'         => [ 'bin/cubic2erect', 'bin/erect2cubic', 'bin/jpeg2qtvr', 'bin/erect2qtvr', 'bin/enblend-mask', 'bin/process-masks', 'bin/erect2planet', 'bin/pto2tiff', 'bin/transform-pano', 'bin/nona-mask' ],
+    'EXE_FILES'         => [ 'bin/cubic2erect', 'bin/erect2cubic',
+        'bin/jpeg2qtvr', 'bin/erect2qtvr', 'bin/enblend-mask',
+        'bin/process-masks', 'bin/erect2planet', 'bin/pto2tiff',
+        'bin/tif2svg', 'bin/enblend-svg',
+        'bin/qtvr2erect-gui', 'bin/tif2svg-gui', 'bin/pto2tiff-gui',
+        'bin/process-masks-gui', 'bin/enblend-svg-gui', 'bin/erect2qtvr-gui',
+        'bin/transform-pano', 'bin/nona-mask', 'bin/qtvr2erect' ],
     'VERSION_FROM'      => 'lib/Panotools/Script.pm', # finds $VERSION
     'PREREQ_PM'         => {'Math::Matrix' => 0.4, 'Image::Magick' => 5.0, 'Storable' => 2.0},
     ($] >= 5.005 ?    ## Add these new keywords supported since 5.005

@@ -1,5 +1,12 @@
 Revision history for Panotools::Script.
 
+0.07
+    - new tools: qtvr2erect, tif2svg, enblend-svg
+    - trivial zenity gui wrappers: enblend-svg-gui, erect2qtvr-gui, process-masks-gui, pto2tiff-gui, qtvr2erect-gui, tif2svg-gui
+    - fixes for recent hugin updates
+    - pto2tiff: don't generate cropped tiff images or specify blend levels
+    - portability fixes: process-masks, enblend-mask, pto2tiff, erect2qtvr
+
 0.06
     - blend any input filetypes with enblend-mask
     - prefer svg to tiff with enblend-mask

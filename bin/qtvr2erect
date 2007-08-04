@@ -1,0 +1,46 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use File::Temp qw/tempdir/;
+use File::Spec;
+use Image::Magick;
+use Panotools::Script;
+
+for my $mov (@ARGV)
+{
+    my $tempdir = tempdir (CLEANUP => 1);
+    warn $tempdir;
+    system ('qtvr2img', $mov, "$tempdir/cube");
+    $mov = File::Spec->rel2abs ($mov);
+
+    my $image = new Image::Magick;
+    $image->Read ("$tempdir/cube_0.pnm");
+    my ($width, $height) = $image->Get ('width', 'height');
+
+    my $erect = new Panotools::Script;
+    $erect->Panorama->Set (h => int ($width * 1.5708),
+                           w => 2 * int ($width * 1.5708),
+                           n => '"TIFF"', E => 0);
+    $erect->Image->[0] = new Panotools::Script::Line::Image;
+    $erect->Image->[0]->Set (f => 0, w => $width, h => $height, v => 90, Eev => 0,
+                             r => 0, p => 0, y => 0, n => "\"$tempdir/cube_0.pnm\"");
+    $erect->Image->[1] = new Panotools::Script::Line::Image;
+    $erect->Image->[1]->Set (f => 0, w => $width, h => $height, v => 90, Eev => 0,
+                             r => 0, p => 0, y => 90, n => "\"$tempdir/cube_1.pnm\"");
+    $erect->Image->[2] = new Panotools::Script::Line::Image;
+    $erect->Image->[2]->Set (f => 0, w => $width, h => $height, v => 90, Eev => 0,
+                             r => 0, p => 0, y => 180, n => "\"$tempdir/cube_2.pnm\"");
+    $erect->Image->[3] = new Panotools::Script::Line::Image;
+    $erect->Image->[3]->Set (f => 0, w => $width, h => $height, v => 90, Eev => 0,
+                             r => 0, p => 0, y => -90, n => "\"$tempdir/cube_3.pnm\"");
+    $erect->Image->[4] = new Panotools::Script::Line::Image;
+    $erect->Image->[4]->Set (f => 0, w => $width, h => $height, v => 90, Eev => 0,
+                             r => 0, p => 90, y => 0, n => "\"$tempdir/cube_4.pnm\"");
+    $erect->Image->[5] = new Panotools::Script::Line::Image;
+    $erect->Image->[5]->Set (f => 0, w => $width, h => $height, v => 90, Eev => 0,
+                             r => 0, p => -90, y => 0, n => "\"$tempdir/cube_5.pnm\"");
+    $erect->Stitch ("$mov.tif");
+
+}

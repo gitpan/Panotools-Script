@@ -9,13 +9,13 @@ use File::Temp qw/tempdir/;
 
 my $opts = {};
 
-my $qtvr_opts = '';
+my @qtvr_opts = ();
 
 while (@ARGV)
 {
     my ($key, $value) = split ('=', shift);
     $opts->{$key} = $value;
-    $qtvr_opts .= $key .'='. quotemeta ($value) .' ';
+    push @qtvr_opts, ($key .'='. $value);
 }
 
 my $cleanup = $opts->{'--cleanup'} || 1;
@@ -149,7 +149,7 @@ print "Tempdir: $tempdir\n" unless $cleanup;
 
 $outfile = "$stub.mov" unless (defined $outfile);
 
-`jpeg2qtvr $qtvr_opts --prefix=$prefix- --preview=$prefix-preview- --outfile="$outfile"`;
+system ('jpeg2qtvr', @qtvr_opts, "--prefix=$prefix-", "--preview=$prefix-preview-", "--outfile=$outfile");
 
 __END__
 

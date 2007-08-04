@@ -1,13 +1,18 @@
 # hugin project file, version 1
-p f2 w950 h320 v184  n"TIFF c:NONE"
-m g1 i0 f0
+p f2 w950 h320 v184  E6.95316e-310 R0 T n"TIFF c:NONE"
+m g1 i0 f0 m2 p0.00784314
 
 # image lines
-i w239 h320 f0 K0a1 K0b0 K1a1 K1b0 K2a1 K2b0 Va0 Vb0 Vc0 Vd0 Vx0 Vy0 a0 b-0.0258324 c0 d0 e0 g0 p0 r0 t0 v45.0372 y-35  u10 n"dscn4905.jpg"
-i w239 h320 f0 K0a1 K0b0 K1a1 K1b0 K2a1 K2b0 Va=0 Vb=0 Vc=0 Vd=0 Vx=0 Vy=0 a=0 b=0 c=0 d=0 e=0 g=0 p1.35258 r-0.752847 t=0 v=0 y2.40698  u10 n"dscn4906.jpg"
-i w239 h320 f0 K0a1 K0b0 K1a1 K1b0 K2a1 K2b0 Va=0 Vb=0 Vc=0 Vd=0 Vx=0 Vy=0 a=0 b=0 c=0 d=0 e=0 g=0 p1.1043 r1.22579 t=0 v=0 y39.9063  u10 n"dscn4907.jpg"
-i w239 h320 f0 K0a1 K0b0 K1a1 K1b0 K2a1 K2b0 Va=0 Vb=0 Vc=0 Vd=0 Vx=0 Vy=0 a=0 b=0 c=0 d=0 e=0 g=0 p-1.05699 r0.580077 t=0 v=0 y68.9569  u10 n"dscn4908.jpg"
-i w239 h320 f0 K0a1 K0b0 K1a1 K1b0 K2a1 K2b0 Va=0 Vb=0 Vc=0 Vd=0 Vx=0 Vy=0 a=0 b=0 c=0 d=0 e=0 g=0 p-1.74361 r1.11399 t=0 v=0 y-67.5651  u10 n"dscn4909.jpg"
+#-hugin  cropFactor=1
+i w239 h320 f0 Eb1 Eev0 Er1 Ra0 Rb0 Rc0 Rd0 Re0 Va1 Vb0 Vc0 Vd0 Vx0 Vy0 a0 b-0.0258324 c0 d0 e0 g0 p0 r0 t0 v45.0372 y-35  Vm5 u10 n"dscn4905.jpg"
+#-hugin  cropFactor=1
+i w239 h320 f0 Eb1 Eev0 Er1 Ra0 Rb0 Rc0 Rd0 Re0 Va=0 Vb=0 Vc=0 Vd=0 Vx=0 Vy=0 a=0 b=0 c=0 d=0 e=0 g=0 p1.35258 r-0.752847 t=0 v=0 y2.40698  Vm5 u10 n"dscn4906.jpg"
+#-hugin  cropFactor=1
+i w239 h320 f0 Eb1 Eev0 Er1 Ra0 Rb0 Rc0 Rd0 Re0 Va=0 Vb=0 Vc=0 Vd=0 Vx=0 Vy=0 a=0 b=0 c=0 d=0 e=0 g=0 p1.1043 r1.22579 t=0 v=0 y39.9063  Vm5 u10 n"dscn4907.jpg"
+#-hugin  cropFactor=1
+i w239 h320 f0 Eb1 Eev0 Er1 Ra0 Rb0 Rc0 Rd0 Re0 Va=0 Vb=0 Vc=0 Vd=0 Vx=0 Vy=0 a=0 b=0 c=0 d=0 e=0 g=0 p-1.05699 r0.580077 t=0 v=0 y68.9569  Vm5 u10 n"dscn4908.jpg"
+#-hugin  cropFactor=1
+i w239 h320 f0 Eb1 Eev0 Er1 Ra0 Rb0 Rc0 Rd0 Re0 Va=0 Vb=0 Vc=0 Vd=0 Vx=0 Vy=0 a=0 b=0 c=0 d=0 e=0 g=0 p-1.74361 r1.11399 t=0 v=0 y-67.5651  Vm5 u10 n"dscn4909.jpg"
 
 
 # specify variables that should be optimized

@@ -26,6 +26,7 @@ my $index = 0;
 
 for my $file (@files)
 {
+    $file = File::Spec->rel2abs ($file);
     my $tempfile = File::Spec->catfile ($tempdir, "$index.tif");
     my $mask = $file;
     $mask =~ s/\.[[:alnum:]]+$/_mask.tif/i;
@@ -41,7 +42,16 @@ for my $file (@files)
     elsif ($file !~ /\.tif$/i)
     {
         print STDERR "Converting $file to TIFF\n";
+
+        # deal with imagemagick brokenness
+        my $curdir = File::Spec->curdir ();
+        $curdir = File::Spec->rel2abs ($curdir);
+        my ($v, $d, $f) = File::Spec->splitpath ($file);
+        my $basedir = File::Spec->catpath ($v, $d, '');
+        chdir $basedir;
+
         system ('convert', '-background', 'transparent', $file, $tempfile);
+        chdir $curdir;
         push @parameters, $tempfile;
     }
     else

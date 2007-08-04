@@ -37,7 +37,7 @@ use File::Spec;
 
 use Storable qw/ dclone /;
 
-our $VERSION = 0.06;
+our $VERSION = 0.07;
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -290,7 +290,7 @@ sub Optimise
     my $try = new Panotools::Script;
     if ($self->{optimiser} =~ /autooptimiser/)
     {
-        system ($self->{optimiser}, '-o', $outfile, $tempfile);
+        system ($self->{optimiser}, '-p', '-o', $outfile, $tempfile);
         return 0 unless ($? == 0);
         $try->Read ($outfile) || return 0;
         $try->Image2Output;

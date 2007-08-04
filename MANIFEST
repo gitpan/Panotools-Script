@@ -5,10 +5,19 @@ bin/erect2cubic
 bin/erect2planet
 bin/jpeg2qtvr
 bin/erect2qtvr
+bin/qtvr2erect
 bin/process-masks
 bin/pto2tiff
 bin/transform-pano
 bin/nona-mask
+bin/tif2svg
+bin/enblend-svg
+bin/qtvr2erect-gui
+bin/tif2svg-gui
+bin/pto2tiff-gui
+bin/process-masks-gui
+bin/enblend-svg-gui
+bin/erect2qtvr-gui
 Changes
 lib/Panotools/Matrix.pm
 lib/Panotools/Script.pm
@@ -44,3 +53,5 @@ t/data/cemetery/hugin-optimise.txt
 t/data/cemetery/hugin-stitch.txt
 t/data/cemetery/hugin.pto
 t/data/equirectangular/equirectangular.jpg
+t/data/mask/sheep0001_mask.tif
+t/data/mask/sheep0002_mask.tif

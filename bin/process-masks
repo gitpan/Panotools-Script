@@ -16,32 +16,35 @@ mkdir $maskdir;
 mkdir $pushdir;
 mkdir $workdir;
 
-for my $file (@ARGV)
+for my $path (@ARGV)
 {
+    my ($vol, $dir, $file) = File::Spec->splitpath ($path);
     my $maskdir_file = catfile ($maskdir, $file);
     my $pushdir_file = catfile ($pushdir, $file);
     my $workdir_file = catfile ($workdir, $file);
-    system ('convert', '-threshold', '99%', $file, $maskdir_file);
+    system ('convert', '-threshold', '99%', $path, $maskdir_file);
     system ('convert', '-negate', $maskdir_file, $pushdir_file);
-    copy ($file, $workdir_file);
+    copy ($path, $workdir_file);
 }
 
-for my $file (@ARGV)
+for my $path (@ARGV)
 {
+    my ($vol, $dir, $file) = File::Spec->splitpath ($path);
     my $tempdir_file = catfile ($tempdir, $file);
     my $workdir_file = catfile ($workdir, $file);
 
     for my $temp (@ARGV)
     {
-        next if ($temp eq $file);
+        next if ($temp eq $path);
+        my ($vol, $dir, $temp) = File::Spec->splitpath ($temp);
         my $pushdir_temp = catfile ($pushdir, $temp);
         my $maskdir_temp = catfile ($maskdir, $temp);
         system ('composite', $pushdir_temp, $workdir_file, $maskdir_temp, $tempdir_file);
         move ($tempdir_file, $workdir_file);
     }
 
-    move ($file, "$file.bak.tif");
-    move ($workdir_file, $file);
+    move ($path, "$path.bak.tif");
+    move ($workdir_file, $path);
 }
 
 __END__

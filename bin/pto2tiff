@@ -17,14 +17,20 @@ for my $pto (@files)
     my $p = new Panotools::Script;
     $p->{stitcher} = 'nona-mask';
     $p->Read ($pto);
-    $p->Panorama->Set (n => '"TIFF_m r:CROP c:DEFLATE"');
+    $p->Panorama->Set (n => '"TIFF_m c:DEFLATE"');
     $p->Stitch ($stub .'_');
 
-    my $args = '-a -l 29';
-    $args .= ' -w' if $p->Panorama->{v} == 360;
+    my @temp_files;
+    for my $index (0 .. scalar @{$p->{image}} - 1)
+    {
+         push @temp_files, ($stub .'_'. sprintf ('%.4d', $index) .'.tif');
+    }
 
-    `enblend-mask $args -o $stub.tif $stub\_????.tif`;
-    `convert $stub.tif $stub.jpg`;
+    my @args = ('-a');
+    push @args ,'-w' if $p->Panorama->{v} == 360;
+
+    system ('enblend-mask', @args, '-o', "$stub.tif", @temp_files);
+    system ('convert', "$stub.tif", "$stub.jpg");
 
     print STDERR "Done: $stub.tif\n";
 }

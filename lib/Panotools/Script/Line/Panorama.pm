@@ -75,6 +75,7 @@ sub _defaults
     $self->{h} = "500";
     $self->{v} = "360.0";
     $self->{n} = "JPEG";
+    $self->{E} = "0";
     $self->{f} = "2";
 }
 

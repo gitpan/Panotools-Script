@@ -1,0 +1,35 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use File::Spec;
+
+# Splits an SVG file into layers, then runs enblend-mask on the
+# resulting SVG files. (c) July 2007 Bruno Postle <bruno@postle.net>
+
+my $file = pop @ARGV;
+exit unless ($file =~ /\.svg$/i);
+$file = File::Spec->rel2abs ($file);
+
+open (FILE, $file) or die "Can't open $file: $!";
+my @lines = <FILE>;
+my $xml = join ('', @lines);
+
+my @layers = $xml =~ /(<g.*?<\/g>)/gs;
+exit unless @layers;
+
+my @files;
+my $index = 0;
+for my $layer (@layers)
+{
+    $xml =~ s/<g.*<\/g>/$layer/gs;
+    my $out = "$file-enblend-svg-$$-$index.svg";
+    open (OUT, ">$out");
+    print OUT $xml;
+    push @files, $out;
+    $index++;
+}
+
+system ('enblend-mask', @ARGV, @files);
+unlink @files;
+
