@@ -32,12 +32,12 @@ use Panotools::Script::Line::Variable;
 use Panotools::Matrix qw(matrix2rollpitchyaw rollpitchyaw2matrix);
 use Math::Trig;
 
-use File::Temp qw/ tempfile /;
+use File::Temp qw/ tempdir /;
 use File::Spec;
 
 use Storable qw/ dclone /;
 
-our $VERSION = 0.07;
+our $VERSION = 0.08;
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -196,7 +196,8 @@ Preview a project (requires ImageMagick)
 sub Preview
 {
     my $self = shift;
-    my ($fh, $tempfile) = tempfile (SUFFIX => '.jpg', UNLINK => $CLEANUP);
+    my $tempdir = tempdir (CLEANUP => $CLEANUP);
+    my $tempfile = File::Spec->catfile ($tempdir, 'preview.jpg');
     my $aspect = $self->Panorama->{w} / $self->Panorama->{h};
     my $clone = $self->Clone;
     my $height = sqrt (40000 / $aspect);
@@ -279,8 +280,9 @@ sub Optimise
 {
     my $self = shift;
     $self->Image2Output;
-    my ($fh, $tempfile) = tempfile (SUFFIX => '.txt', UNLINK => $CLEANUP);
-    my ($fh2, $outfile) = tempfile (SUFFIX => '.txt', UNLINK => $CLEANUP);
+    my $tempdir = tempdir (CLEANUP => $CLEANUP);
+    my $tempfile = File::Spec->catfile ($tempdir, 'optimise.txt');
+    my $outfile = File::Spec->catfile ($tempdir, 'outfile.txt');
     my $clone = $self->Clone;
     for my $image (@{$clone->Image})
     {
@@ -402,7 +404,8 @@ sub Stitch
     my $self = shift;
     my $outfile = shift;
     my @options = @_;
-    my ($fh, $tempfile) = tempfile (SUFFIX => '.txt', UNLINK => $CLEANUP);
+    my $tempdir = tempdir (CLEANUP => $CLEANUP);
+    my $tempfile = File::Spec->catfile ($tempdir, 'stitch.txt');
     $self->Image2Output;
     my $vector = File::Spec->abs2rel ($self->{basedir}, File::Spec->tmpdir);
     $self->Write ($tempfile, $vector);

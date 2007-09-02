@@ -5,14 +5,16 @@ use strict;
 use warnings;
 use Test::More 'no_plan';
 use lib 'lib';
-use File::Temp qw/ tempfile /;
+use File::Temp qw/ tempdir /;
+use File::Spec;
+my $tempdir = tempdir (CLEANUP => 1);
 
 use_ok ('Panotools::Script');
 
 my $p = new Panotools::Script;
 
 {
-my ($fh, $tempfile) = tempfile (SUFFIX => '.txt', UNLINK => 1);
+my $tempfile = File::Spec->catfile ($tempdir, '020.txt');
 ok ($p->Write ($tempfile), "script written to $tempfile");
 }
 # set Gamma correction to 2.2
@@ -44,7 +46,7 @@ $p->Panorama->{f} = '5';
 }
 
 {
-my ($fh, $tempfile) = tempfile (SUFFIX => '.txt', UNLINK => 1);
+my $tempfile = File::Spec->catfile ($tempdir, '020.txt');
 ok ($p->Write ($tempfile), "script written to $tempfile");
 }
 

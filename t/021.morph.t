@@ -5,7 +5,10 @@ use strict;
 use warnings;
 use Test::More 'no_plan';
 use lib 'lib';
-use File::Temp qw/ tempfile /;
+use File::Temp qw/ tempdir /;
+use File::Spec;
+
+my $tempdir = tempdir (CLEANUP => 1);
 
 use_ok ('Panotools::Script');
 
@@ -24,9 +27,19 @@ $p->Panorama->Set (f => 1, w => 600, h => 600, n => 'JPEG');
 }
 
 {
-my ($fh, $tempfile) = tempfile (SUFFIX => '.txt', UNLINK => 0);
+my $tempfile = File::Spec->catfile ($tempdir, '021.txt');
 ok ($p->Write ($tempfile), "script written to $tempfile");
 }
 
-$p->Stitch ('/tmp/foo.jpg');
 
+{
+my $tempfile = File::Spec->catfile ($tempdir, '021.jpg');
+ok ($p->Stitch ($tempfile), "stitched to $tempfile");;
+}
+
+$p->Panorama->Set (n => 'TIFF');
+
+{
+my $tempfile = File::Spec->catfile ($tempdir, '021.tif');
+ok ($p->Stitch ($tempfile), "stitched to $tempfile");;
+}

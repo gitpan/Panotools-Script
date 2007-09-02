@@ -1,5 +1,11 @@
 Revision history for Panotools::Script.
 
+0.08
+    - tif2svg uses autotrace to generate initail vector masks
+    - enblend-svg converts to tiff and runs enblend rather than enblend-mask
+    - tif2svg and enblend-svg support creating jpg proxy images
+    - replaced tempfile with tempdir for windows, still broken on OS X
+
 0.07
     - new tools: qtvr2erect, tif2svg, enblend-svg
     - trivial zenity gui wrappers: enblend-svg-gui, erect2qtvr-gui, process-masks-gui, pto2tiff-gui, qtvr2erect-gui, tif2svg-gui
