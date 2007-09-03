@@ -1,5 +1,8 @@
 Revision history for Panotools::Script.
 
+0.09
+    - Stitch() method, fix stupid bug introduced by trying to fix windows bugs
+
 0.08
     - tif2svg uses autotrace to generate initail vector masks
     - enblend-svg converts to tiff and runs enblend rather than enblend-mask

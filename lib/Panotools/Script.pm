@@ -37,7 +37,7 @@ use File::Spec;
 
 use Storable qw/ dclone /;
 
-our $VERSION = 0.08;
+our $VERSION = 0.09;
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -407,10 +407,10 @@ sub Stitch
     my $tempdir = tempdir (CLEANUP => $CLEANUP);
     my $tempfile = File::Spec->catfile ($tempdir, 'stitch.txt');
     $self->Image2Output;
-    my $vector = File::Spec->abs2rel ($self->{basedir}, File::Spec->tmpdir);
+    my $vector = File::Spec->abs2rel ($self->{basedir}, $tempdir);
     $self->Write ($tempfile, $vector);
     my $cwd = File::Spec->curdir;
-    chdir (File::Spec->tmpdir);
+    chdir ($tempdir);
     system ($self->{stitcher}, @options, '-o', $outfile, $tempfile);
     chdir ($cwd);
     return 0 unless ($? == 0);
