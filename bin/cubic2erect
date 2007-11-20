@@ -5,41 +5,41 @@ use warnings;
 
 use Panotools::Script;
 use File::Spec;
+use Image::Size;
 
 my @images = @ARGV;
 die "usage\n  $0 front.tif right.tif back.tif left.tif up.tif down.tif equirectangular.tif\n" unless scalar @images == 7;
 
 my $out = File::Spec->rel2abs ($ARGV[6]);
 
-for my $index (0 .. 5)
-{
-    my ($volume, $directories, $file) = File::Spec->splitpath ($images[$index]);
-    my $basedir = File::Spec->catpath ($volume, $directories, '');
-    $images[$index] = $file;
-    chdir $basedir;
-}
+my ($face, $face2) = imgsize ($ARGV[3]);
 
 my $pano = new Panotools::Script;
 
-$pano->Panorama->Set (v => 360, f => 2, u => 0, w => 4000, h => 2000, n => '"TIF"');
+my $height = int ($face * 3.1418 / 2);
+my $width = $height * 2;
+
+$pano->Panorama->Set (v => 360, f => 2, u => 0, w => $width, h => $height, n => "\"TIFF c:DEFLATE\"");
+$pano->{basedir} = File::Spec->curdir;
+$pano->{stitcher} = 'nona';
 
 $pano->Image->[0] = new Panotools::Script::Line::Image;
-$pano->Image->[0]->Set (v => 90, r => 0, p => 0, y => 0, n => "\"$images[0]\"");
+$pano->Image->[0]->Set (v => 90, w => $face, h => $face, f => 0, r => 0, p => 0, y => 0, n => "\"" . File::Spec->rel2abs ($images[0]) . "\"");
 
 $pano->Image->[1] = new Panotools::Script::Line::Image;
-$pano->Image->[1]->Set (v => 90, r => 0, p => 0, y => 90, n => "\"$images[1]\"");
+$pano->Image->[1]->Set (v => 90, w => $face, h => $face, f => 0, r => 0, p => 0, y => 90, n => "\"" . File::Spec->rel2abs ($images[1]) . "\"");
 
 $pano->Image->[2] = new Panotools::Script::Line::Image;
-$pano->Image->[2]->Set (v => 90, r => 0, p => 0, y => 180, n => "\"$images[2]\"");
+$pano->Image->[2]->Set (v => 90, w => $face, h => $face, f => 0, r => 0, p => 0, y => 180, n => "\"" . File::Spec->rel2abs ($images[2]) . "\"");
 
 $pano->Image->[3] = new Panotools::Script::Line::Image;
-$pano->Image->[3]->Set (v => 90, r => 0, p => 0, y => 270, n => "\"$images[3]\"");
+$pano->Image->[3]->Set (v => 90, w => $face, h => $face, f => 0, r => 0, p => 0, y => 270, n => "\"" . File::Spec->rel2abs ($images[3]) . "\"");
 
 $pano->Image->[4] = new Panotools::Script::Line::Image;
-$pano->Image->[4]->Set (v => 90, r => 0, p => 90, y => 0, n => "\"$images[4]\"");
+$pano->Image->[4]->Set (v => 90, w => $face, h => $face, f => 0, r => 0, p => 90, y => 0, n => "\"" . File::Spec->rel2abs ($images[4]) . "\"");
 
 $pano->Image->[5] = new Panotools::Script::Line::Image;
-$pano->Image->[5]->Set (v => 90, r => 0, p => -90, y => 0, n => "\"$images[5]\"");
+$pano->Image->[5]->Set (v => 90, w => $face, h => $face, f => 0, r => 0, p => -90, y => 0, n => "\"" . File::Spec->rel2abs ($images[5]) . "\"");
 
 $pano->Stitch ($out);
 

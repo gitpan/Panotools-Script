@@ -37,7 +37,7 @@ for my $layer (@layers)
 
     # switch out jpg if tif alternative exists
     my @jpeg = $xml =~ /"([^"]+)\.jpg"/gs;
-    if (-e "$jpeg[0].tif")
+    if (scalar @jpeg and -e "$jpeg[0].tif")
     {
         print STDOUT "Switching $jpeg[0].jpg for $jpeg[0].tif\n";
         $xml =~ s/$jpeg[0].jpg/$jpeg[0].tif/g;

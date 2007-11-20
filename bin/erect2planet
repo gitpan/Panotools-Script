@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use File::Spec;
 use Panotools::Script;
+use Image::Size;
 
 my $erect = shift or die "usage\n  $0 equirectangular.tif";
 $erect = File::Spec->rel2abs ($erect);
@@ -14,14 +15,7 @@ my $sgraphic = $erect;
 
 $sgraphic =~ s/\.([[:alnum:]]+)$/-sgraphic/;
 
-my ($width, $height);
-
-{
-    use Image::Magick;
-    my $image = new Image::Magick;
-    $image->Read ($erect);
-    ($width, $height) = $image->Get ('width', 'height');
-}
+my ($width, $height) = imgsize ($erect);
 
 my $face = $width;
 

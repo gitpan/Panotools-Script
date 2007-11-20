@@ -2,7 +2,7 @@
 
 use strict;
 use warnings;
-use Image::Magick;
+use Image::Size;
 
 my $cwd = `cat \$HOME/.erect2qtvr-gui` || $ENV{'HOME'};
 chomp $cwd;
@@ -31,9 +31,7 @@ else
     `echo '$cwd' > \$HOME/.erect2qtvr-gui` if ($cwd =~ /^\//);
 }
 
-my $image = new Image::Magick;
-$image->Read ($erect);
-my ($width, $height) = $image->Get ('width', 'height');
+my ($width, $height) = imgsize ($erect);
 
 unless ($width and $height and $width == 2 * $height)
 {

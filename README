@@ -21,10 +21,11 @@ Dependencies
 ------------
 
 Math::Matrix
-Image::Magick
+Image::Size
 
 This module requires 'autooptimiser' and 'nona' from hugin.  Some of
-the scripts require 'enblend', 'autotrace' and ImageMagick command-line tools.
+the scripts require 'freepv', 'enblend', 'autotrace' and ImageMagick
+command-line tools.
 
 The various *-gui tools require 'zenity' and will only work on
 Linux/unix systems.

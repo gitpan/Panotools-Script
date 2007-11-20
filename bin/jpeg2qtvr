@@ -78,62 +78,76 @@ Options
 local ($/, *FH);
 
 open (FH, $prefix ."0.jpg") or die $!;
+binmode (FH, ':raw');
 my $image0 = <FH>;
 close FH;
 
 open (FH, $prefix ."1.jpg") or die $!;
+binmode (FH, ':raw');
 my $image1 = <FH>;
 close FH;
 
 open (FH, $prefix ."2.jpg") or die $!;
+binmode (FH, ':raw');
 my $image2 = <FH>;
 close FH;
 
 open (FH, $prefix ."3.jpg") or die $!;
+binmode (FH, ':raw');
 my $image3 = <FH>;
 close FH;
 
 open (FH, $prefix ."4.jpg") or die $!;
+binmode (FH, ':raw');
 my $image4 = <FH>;
 close FH;
 
 open (FH, $prefix ."5.jpg") or die $!;
+binmode (FH, ':raw');
 my $image5 = <FH>;
 close FH;
 
 my ($width_image, $height_image) = JPEGsize ($image0);
 die 'Can\'t determine JPEG dimensions' unless ($width_image == $height_image);
+print STDERR "Cubeface size: $width_image\n";
 
 my ($preview0, $preview1, $preview2, $preview3, $preview4, $preview5, $width_preview, $height_preview);
 
 if ($do_preview)
 {
     open (FH, $do_preview ."0.jpg") or die $!;
+    binmode (FH, ':raw');
     $preview0 = <FH>;
     close FH;
 
     open (FH, $do_preview ."1.jpg") or die $!;
+    binmode (FH, ':raw');
     $preview1 = <FH>;
     close FH;
 
     open (FH, $do_preview ."2.jpg") or die $!;
+    binmode (FH, ':raw');
     $preview2 = <FH>;
     close FH;
 
     open (FH, $do_preview ."3.jpg") or die $!;
+    binmode (FH, ':raw');
     $preview3 = <FH>;
     close FH;
 
     open (FH, $do_preview ."4.jpg") or die $!;
+    binmode (FH, ':raw');
     $preview4 = <FH>;
     close FH;
 
     open (FH, $do_preview ."5.jpg") or die $!;
+    binmode (FH, ':raw');
     $preview5 = <FH>;
     close FH;
 
     ($width_preview, $height_preview) = JPEGsize ($preview0);
     die 'Can\'t determine preview JPEG dimensions' unless ($width_preview == $height_preview);
+    print STDERR "Preview size: $width_preview\n";
 }
 
 # date is seconds since midnight, January 1, 1904
@@ -1110,27 +1124,25 @@ $mov .= $image5;
 
 if ($outfile)
 {
-    open (OUTFILE, '> '. $opts->{'--outfile'});
+    open (OUTFILE, '>'. $opts->{'--outfile'});
+    binmode (OUTFILE, ':raw');
     print OUTFILE $mov;
     close OUTFILE;
 }
 else
 {
+    binmode (STDOUT, ':raw');
     print STDOUT $mov;
 }
 
 sub pack4B
 {
-    my $bytes = sprintf ('%.8x', shift);
-    $bytes =~ /(..)(..)(..)(..)/;
-    return chr(hex($1)). chr(hex($2)). chr(hex($3)). chr(hex($4));
+    return pack ('N', shift);
 }
 
 sub pack2B
 {
-    my $bytes = sprintf ('%.4x', shift);
-    $bytes =~ /(..)(..)/;
-    return chr(hex($1)). chr(hex($2));
+    return pack ('n', shift);
 }
 
 sub packfloat

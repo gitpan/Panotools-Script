@@ -1,11 +1,11 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Panotools-Script
-version:      0.09
+version:      0.11
 version_from: lib/Panotools/Script.pm
 installdirs:  site
 requires:
-    Image::Magick:                 5
+    Image::Size:                   3
     Math::Matrix:                  0.4
     Storable:                      2
 

@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use File::Spec;
 use Panotools::Script;
+use Image::Size;
 
 use File::Temp qw/tempdir/;
 
@@ -18,7 +19,7 @@ while (@ARGV)
     push @qtvr_opts, ($key .'='. $value);
 }
 
-my $cleanup = $opts->{'--cleanup'} || 1;
+my $cleanup = 1; $cleanup = 0 if (defined $opts->{'--cleanup'} and $opts->{'--cleanup'} == 0);
 my $quality = $opts->{'--quality'} || 70;
 my $pitch = $opts->{'--pitch'} || 0;
 my $yaw = $opts->{'--yaw'} || 0;
@@ -64,14 +65,7 @@ my $prefix = File::Spec->catfile ($tempdir, 'cube');
 
 # get the width and height of the input image
 
-my ($width, $height);
-
-{
-    use Image::Magick;
-    my $image = new Image::Magick;
-    $image->Read ($erect);
-    ($width, $height) = $image->Get ('width', 'height');
-}
+my ($width, $height) = imgsize ($erect);
 
 # calculate an 'ideal' cubeface size
 

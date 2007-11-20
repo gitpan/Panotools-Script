@@ -1,5 +1,10 @@
 Revision history for Panotools::Script.
 
+0.11
+    - replace Image::Magick with Image::Size for sizing images
+    - jpeg2qtvr fix CRLF bug on windows
+    - fix cubic2erect (Peter Crowley)
+
 0.09
     - Stitch() method, fix stupid bug introduced by trying to fix windows bugs
 
