@@ -3,6 +3,8 @@ package Panotools::Script::Line;
 use strict;
 use warnings;
 
+use Storable qw/ dclone /;
+
 =head1 NAME
 
 Panotools::Script::Line - Panorama Tools script data
@@ -97,6 +99,20 @@ sub Set
         $self->{$entry} = $hash{$entry};
     }
     $self->_sanitise;
+}
+
+=pod
+
+Clone a line object
+
+ $clone = $l->Clone;
+
+=cut
+
+sub Clone
+{
+    my $self = shift;
+    dclone ($self);
 }
 
 sub _defaults {}

@@ -5,11 +5,12 @@ use warnings;
 use File::Temp qw/tempdir/;
 use File::Spec;
 
-# Splits an SVG file into layers, then runs enblend-mask on the
-# resulting SVG files. (c) July 2007 Bruno Postle <bruno@postle.net>
+# Splits an SVG file into layers, then creates a PREFIX_mask.tif file for
+# each image using SVG clip mask as basis, then runs enblend-mask on the
+# images referenced. (c) July 2007 Bruno Postle <bruno@postle.net>
 
 my $tempdir = tempdir (CLEANUP => 1);
-my $file = pop @ARGV;
+my $file = pop @ARGV || die 'No SVG file specified';
 exit unless ($file =~ /\.svg$/i);
 $file = File::Spec->rel2abs ($file);
 
@@ -23,7 +24,6 @@ exit unless @layers;
 my @files;
 my $index = 0;
 
-# deal with imagemagick brokenness
 my $curdir = File::Spec->curdir ();
 $curdir = File::Spec->rel2abs ($curdir);
 my ($v, $d, $f) = File::Spec->splitpath ($file);
@@ -35,23 +35,21 @@ for my $layer (@layers)
     $xml =~ s/<g.*<\/g>/$layer/gs;
     my $out = "$file-enblend-svg-$$-$index.svg";
 
-    # switch out jpg if tif alternative exists
-    my @jpeg = $xml =~ /"([^"]+)\.jpg"/gs;
-    if (scalar @jpeg and -e "$jpeg[0].tif")
-    {
-        print STDOUT "Switching $jpeg[0].jpg for $jpeg[0].tif\n";
-        $xml =~ s/$jpeg[0].jpg/$jpeg[0].tif/g;
-    }
+    $xml =~ s/<image/<rect/g;
+    $xml =~ s/style=".*?"/style="fill:#FFFFFF"/g;
+    $xml =~ s/xlink:href="(.*?)"//;
+    my $image = $1;
+    push @files, $image;
+    $image =~ s/\.[^.[:space:]]+$/_mask.tif/;
 
     open (OUT, ">$out");
     print OUT $xml;
 
-    my $tempfile = File::Spec->catfile ($tempdir, "$index.tif");
-    print STDOUT "Creating $tempfile ... ";
-    system ('convert', '-background', 'transparent', $out, $tempfile);
+    print STDOUT "Creating $image ... ";
+    system ('convert', '-channel', 'R', '-separate', '-compress', 'FAX', $out, $image);
+    system ('mogrify', '-negate', $image);
     print STDOUT "Done.\n";
 
-    push @files, $tempfile;
     close OUT;
     unlink $out;
     $index++;
@@ -59,7 +57,7 @@ for my $layer (@layers)
 
 chdir $curdir;
 
-system ('enblend', @ARGV, @files);
+system ('enblend-mask', @ARGV, @files);
 
 __END__
 

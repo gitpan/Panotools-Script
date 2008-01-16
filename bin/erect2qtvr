@@ -63,87 +63,48 @@ $stub =~ s/\.([[:alnum:]]+)$//;
 
 my $prefix = File::Spec->catfile ($tempdir, 'cube');
 
-# get the width and height of the input image
+my $pto_temp = "$stub.erect2qtvr.$$.pto";
 
-my ($width, $height) = imgsize ($erect);
-
-# calculate an 'ideal' cubeface size
-
-my $face = 8 * int (int ($width / 3.1416) / 8);
+system ('erect2cubic', "--erect=$erect", "--ptofile=$pto_temp", "--filespec=TIFF_m", "--pitch=$pitch", "--yaw=$yaw");
+system ('nona', '-m', 'TIFF_m', '-p', 'UINT8', '-o', "$prefix-face", $pto_temp);
 
 # generate JPEG cubefaces
-
-my $scratch = new Panotools::Script;
-$scratch->Panorama->Set (v => 90, f => 0, u => 0, w => $face, h => $face, n => '"TIFF"');
-
-$scratch->{stitcher} = 'nona';
-
-$scratch->Image->[0] = new Panotools::Script::Line::Image;
-
-$scratch->Image->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => $pitch, y => $yaw, n => "\"$erect\"");
-
-$scratch->Stitch ("$prefix-0.tif");
-
-$scratch->Transform (0, 0, -90);
-$scratch->Stitch ("$prefix-1.tif");
-
-$scratch->Transform (0, 0, -90);
-$scratch->Stitch ("$prefix-2.tif");
-
-$scratch->Transform (0, 0, -90);
-$scratch->Stitch ("$prefix-3.tif");
-
-$scratch->Transform (0, 0, -90);
-$scratch->Transform (0, -90, 0);
-$scratch->Stitch ("$prefix-4.tif");
-
-$scratch->Transform (0, 180, 0);
-$scratch->Stitch ("$prefix-5.tif");
-
 for my $index (0 .. 5)
 {
-    system ('convert', '-quality', $quality, "$prefix-$index.tif", "$prefix-$index.jpg");
+    system ('convert', '-quality', $quality, "$prefix-face000$index.tif", "$prefix-face000$index.jpg");
 }
 
 # fisheye cubefaces for preview track
+my $scratch = new Panotools::Script;
 
+$scratch->Read ($pto_temp);
 $scratch->Panorama->Set (v => 100, f => 3);
+$scratch->Write ($pto_temp);
 
-$scratch->Image->[0]->Set (r => 0, p => $pitch, y => $yaw);
-$scratch->Stitch ("$prefix-preview-0.tif");
+system ('nona', '-m', 'TIFF_m', '-p', 'UINT8', '-o', "$prefix-preview", $pto_temp);
 
-$scratch->Transform (0, 0, -90);
-$scratch->Stitch ("$prefix-preview-1.tif");
+unlink $pto_temp;
 
-$scratch->Transform (0, 0, -90);
-$scratch->Stitch ("$prefix-preview-2.tif");
-
-$scratch->Transform (0, 0, -90);
-$scratch->Stitch ("$prefix-preview-3.tif");
-
-$scratch->Transform (0, 0, -90);
-$scratch->Transform (0, -90, 0);
-$scratch->Stitch ("$prefix-preview-4.tif");
-
-$scratch->Transform (0, 180, 0);
-$scratch->Stitch ("$prefix-preview-5.tif");
-
-$scratch->Panorama->Set (v => 90, f => 0, w => 256, h => 256, n => '"JPEG"');
+$scratch = new Panotools::Script;
+$scratch->Panorama->Set (v => 90, f => 0, w => 256, h => 256, n => '"TIFF"');
+$scratch->Image->[0] = new Panotools::Script::Line::Image;
 
 for my $index (0 .. 5)
 {
     # generate JPEG preview cubefaces
-    system ('mogrify', '-geometry', '32x32', "$prefix-preview-$index.tif");
-    $scratch->Image->[0]->Set (w => 32, h => 32, v => 100, f => 3, r => 0, p => 0, y => 0, n => "\"$prefix-preview-$index.tif\"");
-    $scratch->Stitch ("$prefix-preview-$index.jpg");
-    system ('mogrify', '-quality', $quality, "$prefix-preview-$index.jpg");
+    system ('mogrify', '-geometry', '32x32', "$prefix-preview000$index.tif");
+    $scratch->Image->[0]->Set (w => 32, h => 32, v => 100, f => 3, r => 0, p => 0, y => 0, n => "\"$prefix-preview000$index.tif\"");
+    $scratch->Write ($pto_temp);
+    system ('nona', '-o', "$prefix-preview-rectilinear.tif", $pto_temp);
+    unlink $pto_temp;
+    system ('convert', '-quality', $quality, "$prefix-preview-rectilinear.tif", "$prefix-preview000$index.jpg");
 }
 
 print "Tempdir: $tempdir\n" unless $cleanup;
 
 $outfile = "$stub.mov" unless (defined $outfile);
 
-system ('jpeg2qtvr', @qtvr_opts, "--prefix=$prefix-", "--preview=$prefix-preview-", "--outfile=$outfile");
+system ('jpeg2qtvr', @qtvr_opts, "--prefix=$prefix-face000", "--preview=$prefix-preview000", "--outfile=$outfile");
 
 __END__
 

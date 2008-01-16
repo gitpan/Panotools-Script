@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=QTVR converter
+Comment=Convert QTVR files to equirectangular
+Exec=qtvr2erect-gui %f
+Icon=hugin
+Terminal=false
+Type=Application
+Categories=Graphics;
+MimeType=video/quicktime;
+GenericName=QTVR converter

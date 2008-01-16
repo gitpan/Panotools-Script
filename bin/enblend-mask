@@ -36,7 +36,14 @@ for my $file (@files)
     if (-e $mask)
     {
         print STDERR "Using mask $mask\n";
-        system ('composite', '-compose', 'CopyOpacity', $mask, $file, $tempfile);
+        my $mask_old = File::Spec->catfile ($tempdir, 'mask_old.tif');
+        my $mask_new = File::Spec->catfile ($tempdir, 'mask_new.tif');
+        # extract existing alpha mask
+        system ('convert', $file, '-channel', 'matte', '-negate', '-separate', $mask_old);
+        # merge existing mask with file mask to create new mask
+        system ('composite', $mask_old, $mask, $mask, $mask_new);
+        # insert new mask into existing image
+        system ('composite', '-compose', 'CopyOpacity', $mask_new, $file, $tempfile);
         push @parameters, $tempfile;
     }
     elsif ($file !~ /\.tif$/i)

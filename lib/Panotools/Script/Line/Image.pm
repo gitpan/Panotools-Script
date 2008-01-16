@@ -3,6 +3,8 @@ package Panotools::Script::Line::Image;
 use strict;
 use warnings;
 use Panotools::Script::Line;
+use Panotools::Matrix qw(matrix2rollpitchyaw rollpitchyaw2matrix);
+use Math::Trig;
 
 use vars qw /@ISA/;
 @ISA = qw /Panotools::Script::Line/;
@@ -42,13 +44,6 @@ Basically the same format as an 'o' line.
                    of the line scanner relative to the film transport
                    g - horizontal shear
                    t - vertical shear
- 
-  K0a, K0b     linear color/grayvalue correction coefficients for each channel
-  K1a, K1b        (for grayscale images Only K0a, K0b is used):
-  K2a, K2b        i_red = K0a * i_red + K0b
-                  i_green = K1a * i_green + K1b
-                  i_blue = K2a * i_blue + K2b
-                This correction is applied after the flatfield flatfield correction.
  
   Eev          exposure of image in EV (exposure values)
   Er           white balance factor for red channel
@@ -92,12 +87,6 @@ Basically the same format as an 'o' line.
                    Vx - horizontal offset
                    Vy - vertical offset
  
-  Vf           filename of flatfield image.
-                For additive correction the image will be used as it is.
-                In the case of correction by division, the flatfield will be divided by
-                its mean value.
- 
- 
   S100,600,100,800   Selection(l,r,t,b), Only pixels inside the rectangle will be used for conversion.
                         Original image size is used for all image parameters
                         (e.g. field-of-view) refer to the original image.
@@ -105,17 +94,7 @@ Basically the same format as an 'o' line.
                         The selection will be circular for circular fisheye images, and
                         rectangular for all other projection formats
 
-  X10          World coordinates of camera position, only used for PTStereo
-  Y200         If the camera is aligned (yaw = pitch = roll = 0.0),
-  Z-13.5       X is coordinate to the right, Y vertically up and
-               -Z is forward viewing direction.
   nName        file name of the input image.
-
-  C100,600,100,800   Crop(l,r,t,b), Only pixels inside the rectangle will be used for conversion.
-                        Cropped image size is used for all image parameters
-                        (e.g. field-of-view) refer to the cropped part of the image.
-
-  i            (the small letter). Morph-to-fit using control points.
 
   i f2 r0   p0    y0     v183    a0 b-0.1 c0  S100,600,100,800 n"photo1.jpg"
   i f2 r0   p0    y180   v183    a0 b-0.1 c0  S100,600,100,800 n"photo1.jpg"
@@ -162,6 +141,29 @@ sub Assemble
     return (join ' ', ($self->Identifier, @tokens)) ."\n" if (@tokens);
 }
 
+=pod
+
+Rotate transform the image, angles in degrees:
+
+  $i->Transform ($roll, $pitch, $yaw);
+
+=cut
+
+sub Transform
+{
+    my $self = shift;
+    my ($roll, $pitch, $yaw) = @_;
+    my @transform_rpy = map (deg2rad ($_), ($roll, $pitch, $yaw));
+    my $transform_matrix = rollpitchyaw2matrix (@transform_rpy);
+    my @rpy = map (deg2rad ($_), ($self->{r}, $self->{p}, $self->{y}));
+    my $matrix = rollpitchyaw2matrix (@rpy);
+    my $result = $transform_matrix->multiply ($matrix);
+    my ($r, $p, $y) = map (rad2deg ($_), matrix2rollpitchyaw ($result));
+    $self->{r} = $r;
+    $self->{p} = $p;
+    $self->{y} = $y;
+}
+
 sub _prepend
 {
     my $vector = shift;
@@ -176,6 +178,38 @@ sub _prepend
     }
     return "\"$name\"";
 }
+
+sub Report
+{
+    my $self = shift;
+    my @report;
+
+    my $format = 'UNKNOWN';
+    $format = "Rectilinear" if $self->{f} == 0;
+    $format = "Cylindrical" if $self->{f} == 1;
+    $format = "Circular Fisheye" if $self->{f} == 2;
+    $format = "Full-frame Fisheye" if $self->{f} == 3;
+    $format = "Equirectangular" if $self->{f} == 4;
+
+    push @report, ['Dimensions', $self->{w} .'x'. $self->{h}];
+    push @report, ['Megapixels', int ($self->{w} * $self->{h} / 1024 / 1024 * 10) / 10];
+    push @report, ['Format', $format];
+    push @report, ['Horizontal Field of View', $self->{v}];
+    push @report, ['Roll Pitch Yaw', $self->{r} .','. $self->{p} .','. $self->{y}];
+    push @report, ['Lens distortion', $self->{a} .','. $self->{b} .','. $self->{c}] if defined $self->{a};
+    push @report, ['Image centre', $self->{d} .','. $self->{e}] if defined $self->{d};
+    push @report, ['Image shear', $self->{g} .','. $self->{t}] if defined $self->{g};
+    push @report, ['Exposure Value', $self->{Eev}];
+    push @report, ['Red Blue colour balance', $self->{Er} .','. $self->{Eb}];
+    push @report, ['EMOR parameters', $self->{Ra} .','. $self->{Rb} .','. $self->{Rc} .','. $self->{Rd} .','. $self->{Re}];
+    push @report, ['Vignetting parameters', $self->{Va} .','. $self->{Vb} .','. $self->{Vc} .','. $self->{Vd}];
+    push @report, ['Vignetting centre', $self->{Vx} .','. $self->{Vy}];
+    push @report, ['Selection area', $self->{S}] if defined $self->{S};
+    push @report, ['File name', $self->{n}];
+
+    [@report];
+}
+
 
 1;
 

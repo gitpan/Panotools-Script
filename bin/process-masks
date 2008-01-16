@@ -6,6 +6,8 @@ use File::Temp qw/tempdir/;
 use File::Spec::Functions;
 use File::Copy;
 
+die "Usage:\n  $0 image1_mask.tif image2_mask.tif [image3_mask.tif ...]\n" unless @ARGV;
+
 my $tempdir = tempdir (CLEANUP => 1);
 
 my $maskdir = catfile ($tempdir, 'mask');

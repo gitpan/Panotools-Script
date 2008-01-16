@@ -22,6 +22,3 @@ ok ($p->Write ($tempfile), "script written to $tempfile");
 # set projection to Mercator
 #$p->Panorama->{f} = '5';
 
-ok ($p->Optimise, 'Optimisation succeeds');
-
-

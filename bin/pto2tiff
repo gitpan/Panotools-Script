@@ -15,21 +15,33 @@ for my $pto (@files)
     use Panotools::Script;
 
     my $p = new Panotools::Script;
-    $p->{stitcher} = 'nona-mask';
     $p->Read ($pto);
-    $p->Panorama->Set (n => '"TIFF_m c:DEFLATE"');
-    $p->Stitch ($stub .'_');
-
-    my @temp_files;
-    for my $index (0 .. scalar @{$p->{image}} - 1)
+    if (scalar @{$p->{image}} == 1)
     {
-         push @temp_files, ($stub .'_'. sprintf ('%.4d', $index) .'.tif');
+        $p->Panorama->Set (n => '"TIFF c:DEFLATE"');
     }
+    else
+    {
+        $p->Panorama->Set (n => '"TIFF_m c:DEFLATE"');
+    }
+    my $pto_temp = "$stub.pto2tiff.$$.pto";
+    $p->Write ($pto_temp);
+    system ('nona-mask', '-o', $stub, $pto_temp);
+    unlink $pto_temp;
 
-    my @args = ('-a');
-    push @args ,'-w' if $p->Panorama->{v} == 360;
+    if (scalar @{$p->{image}} > 1)
+    {
+        my @temp_files;
+        for my $index (0 .. scalar @{$p->{image}} - 1)
+        {
+             push @temp_files, ($stub . sprintf ('%.4d', $index) .'.tif');
+        }
 
-    system ('enblend-mask', @args, '-o', "$stub.tif", @temp_files);
+        my @args;
+        push @args ,'-w' if $p->Panorama->{v} == 360;
+
+        system ('enblend-mask', @args, '-o', "$stub.tif", @temp_files);
+    }
     system ('convert', "$stub.tif", "$stub.jpg");
 
     print STDERR "Done: $stub.tif\n";

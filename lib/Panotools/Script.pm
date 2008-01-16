@@ -6,7 +6,7 @@ Panotools::Script - Panorama Tools scripting
 
 =head1 SYNOPSIS
 
-Read, manipulate and write Panorama Tools script files.
+Read, write and manipulate hugin script files.
 
 =head1 DESCRIPTION
 
@@ -23,21 +23,20 @@ use warnings;
 
 use Panotools::Script::Line::Mode;
 use Panotools::Script::Line::Panorama;
+use Panotools::Script::Line::Option;
 use Panotools::Script::Line::Image;
+use Panotools::Script::Line::ImageMetadata;
 use Panotools::Script::Line::Output;
 use Panotools::Script::Line::Control;
 use Panotools::Script::Line::ControlMorph;
 use Panotools::Script::Line::Variable;
-
-use Panotools::Matrix qw(matrix2rollpitchyaw rollpitchyaw2matrix);
-use Math::Trig;
 
 use File::Temp qw/ tempdir /;
 use File::Spec;
 
 use Storable qw/ dclone /;
 
-our $VERSION = 0.11;
+our $VERSION = 0.12;
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -62,13 +61,13 @@ sub _defaults
     my $self = shift;
     $self->{mode} = new Panotools::Script::Line::Mode;
     $self->{panorama} = new Panotools::Script::Line::Panorama;
+    $self->{option} = new Panotools::Script::Line::Option;
     $self->{variable} = new Panotools::Script::Line::Variable;
     $self->{image} = [];
+    $self->{imagemetadata} = [];
     $self->{output} = [];
     $self->{control} = [];
     $self->{controlmorph} = [];
-    $self->{stitcher} = $ENV{STITCHER} || 'nona';  # nona, PTmender, PTStitcher, Tmender
-    $self->{optimiser} = $ENV{OPTIMISER} || 'autooptimiser'; # PToptimizer PTOptimizer, autooptimiser
     $self->{basedir} = File::Spec->rel2abs (File::Spec->curdir);
 }
 
@@ -95,6 +94,7 @@ sub Read
         $line =~ s/(\r|\n)//g;
         $self->Mode->Parse ($line) if ($line =~ /^m /);
         $self->Panorama->Parse ($line) if ($line =~ /^p /);
+        $self->Option->Parse ($line) if ($line =~ /^#hugin_/);
         $self->Variable->Parse ($line) if ($line =~ /^v /);
         if ($line =~ /^i /)
         {
@@ -119,6 +119,13 @@ sub Read
             my $controlmorph = new Panotools::Script::Line::ControlMorph;
             $controlmorph->Parse ($line);
             push @{$self->ControlMorph}, $controlmorph;
+        }
+        if ($line =~ /^#-hugin /)
+        {
+            # per-image metadata
+            my $imagemeta = new Panotools::Script::Line::ImageMetadata;
+            $imagemeta->Parse ($line);
+            push @{$self->ImageMetadata}, $imagemeta;
         }
     }
     $self->Output2Image;
@@ -147,9 +154,10 @@ sub Write
     print FILE $self->Panorama->Assemble;
     print FILE $self->Mode->Assemble;
     print FILE "\n# Image lines\n";
-    for my $image (@{$self->Image})
+    for my $index (0 .. (scalar (@{$self->Image}) - 1))
     {
-         print FILE $image->Assemble ($vector);
+        print FILE $self->ImageMetadata->[$index]->Assemble if defined ($self->ImageMetadata->[$index]);
+        print FILE $self->Image->[$index]->Assemble if defined ($self->Image->[$index]);
     }
     print FILE "\n# Variable lines\n";
     print FILE $self->Variable->Assemble;
@@ -162,6 +170,8 @@ sub Write
     {
          print FILE $controlmorph->Assemble;
     }
+    print FILE "\n# option lines\n";
+    print FILE $self->Option->Assemble;
     print FILE "\n*\n";
     print FILE "\n# Output image lines\n";
     for my $output (@{$self->Output})
@@ -187,28 +197,6 @@ sub Clone
 
 =pod
 
-Preview a project (requires ImageMagick)
-
- $p->Preview;
-
-=cut
-
-sub Preview
-{
-    my $self = shift;
-    my $tempdir = tempdir (CLEANUP => $CLEANUP);
-    my $tempfile = File::Spec->catfile ($tempdir, 'preview.jpg');
-    my $aspect = $self->Panorama->{w} / $self->Panorama->{h};
-    my $clone = $self->Clone;
-    my $height = sqrt (40000 / $aspect);
-    my $width = $aspect * $height;
-    $clone->Panorama->Set (w => int ($width), h => int ($height), n => '"JPEG"');
-    $clone->Stitch ($tempfile);
-    system ('display', '-sample', '200%', $tempfile);
-}
-
-=pod
-
 Access various sections of the scriptfile:
 
  $p->Mode;          # a L<Panotools::Script::Line::Mode> object
@@ -227,6 +215,12 @@ sub Panorama
 {
     my $self = shift;
     $self->{panorama};
+}
+
+sub Option
+{
+    my $self = shift;
+    $self->{option};
 }
 
 sub Variable
@@ -250,6 +244,12 @@ sub Image
     $self->{image};
 }
 
+sub ImageMetadata
+{
+    my $self = shift;
+    $self->{imagemetadata};
+}
+
 sub Output
 {
     my $self = shift;
@@ -270,53 +270,6 @@ sub ControlMorph
 
 =pod
 
-Optimise image parameters in a project:
-
-  $p->Optimise;
-
-=cut
-
-sub Optimise
-{
-    my $self = shift;
-    $self->Image2Output;
-    my $tempdir = tempdir (CLEANUP => $CLEANUP);
-    my $tempfile = File::Spec->catfile ($tempdir, 'optimise.txt');
-    my $outfile = File::Spec->catfile ($tempdir, 'outfile.txt');
-    my $clone = $self->Clone;
-    for my $image (@{$clone->Image})
-    {
-        $image->_sanitise_ptoptimizer;
-    }
-    $clone->Write ($tempfile);
-    my $try = new Panotools::Script;
-    if ($self->{optimiser} =~ /autooptimiser/)
-    {
-        system ($self->{optimiser}, '-p', '-o', $outfile, $tempfile);
-        return 0 unless ($? == 0);
-        $try->Read ($outfile) || return 0;
-        $try->Image2Output;
-    }
-    else
-    {
-        system ($self->{optimiser}, $tempfile);
-        return 0 unless ($? == 0);
-        $try->Read ($tempfile) || return 0;
-    }
-    for my $index (0 .. scalar (@{$try->Output}) - 1)
-    {
-        for my $key (keys %{$try->Output->[$index]})
-        {
-            my $value = $try->Output->[$index]->{$key};
-            $self->Output->[$index]->Set ($key => $value);
-        }
-    }
-    $self->Output2Image;
-    return 1;
-}
-
-=pod
-
 Rotate transform all the images in a project, angles in degrees:
 
   $p->Transform ($roll, $pitch, $yaw);
@@ -327,17 +280,9 @@ sub Transform
 {
     my $self = shift;
     my ($roll, $pitch, $yaw) = @_;
-    my @transform_rpy = map (deg2rad ($_), ($roll, $pitch, $yaw));
-    my $transform_matrix = rollpitchyaw2matrix (@transform_rpy);
     for my $image (@{$self->Image})
     {
-        my @rpy = map (deg2rad ($_), ($image->{r}, $image->{p}, $image->{y}));
-        my $matrix = rollpitchyaw2matrix (@rpy);
-        my $result = $transform_matrix->multiply ($matrix);
-        my ($r, $p, $y) = map (rad2deg ($_), matrix2rollpitchyaw ($result));
-        $image->{r} = $r;
-        $image->{p} = $p;
-        $image->{y} = $y;
+        $image->Transform ($roll, $pitch, $yaw);
     }
     $self->Image2Output;
 }
@@ -389,32 +334,6 @@ sub Image2Output
             }
         }
     }
-}
-
-=pod
-
-Stitch a project:
-
-  $p->Stitch ('/path/to/output.jpg');
-
-=cut
-
-sub Stitch
-{
-    my $self = shift;
-    my $outfile = shift;
-    my @options = @_;
-    my $tempdir = tempdir (CLEANUP => $CLEANUP);
-    my $tempfile = File::Spec->catfile ($tempdir, 'stitch.txt');
-    $self->Image2Output;
-    my $vector = File::Spec->abs2rel ($self->{basedir}, $tempdir);
-    $self->Write ($tempfile, $vector);
-    my $cwd = File::Spec->curdir;
-    chdir ($tempdir);
-    system ($self->{stitcher}, @options, '-o', $outfile, $tempfile);
-    chdir ($cwd);
-    return 0 unless ($? == 0);
-    return 1;
 }
 
 1;

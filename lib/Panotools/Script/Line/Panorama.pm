@@ -21,6 +21,14 @@ Panorama parameters are described by a 'p' line
                    1 - Cylindrical (for Printing and QTVR)
                    2 - Equirectangular ( for Spherical panos), default
                    3 - full-frame fisheye
+                   4 - stereographic
+                   5 - mercator
+                   6 - transverse mercator
+                   7 - sinusoidal
+                   8 - Lambert Equal Area Cylindrical
+                   9 - Lambert Azimuthal
+                  10 - Albers Equal Area Conical
+
   v360         horizontal field of view of panorama (default 360)
   nPICT        Panorama file format, one of:
                    PNG           png-format, 8 & 16 bit supported
@@ -62,6 +70,9 @@ Panorama parameters are described by a 'p' line
                UINT16 - 16 bit unsigned
                FLOAT  - 32 bit floating point
                By default the bit depth of the input images is used.
+  S100,600,100,800   Selection(left,right,top,bottom), Only pixels inside the rectangle
+                     will be rendered. Images that do not contain pixels in this area
+                     are not rendered/created.
 
 =cut
 
@@ -79,12 +90,46 @@ sub _defaults
     $self->{f} = "2";
 }
 
-sub _valid { '^([bdfhknuvwERT])(.*)' }
+sub _valid { '^([bdfhknuvwERTS])(.*)' }
 
 sub Identifier
 {
     my $self = shift;
     return "p";
+}
+
+sub Report
+{
+    my $self = shift;
+    my @report;
+
+    my $format = 'UNKNOWN';
+    $format = "Rectilinear" if $self->{f} == 0;
+    $format = "Cylindrical" if $self->{f} == 1;
+    $format = "Equirectangular" if $self->{f} == 2;
+    $format = "Fisheye" if $self->{f} == 3;
+    $format = "Stereographic" if $self->{f} == 4;
+    $format = "Mercator" if $self->{f} == 5;
+    $format = "Transverse mercator" if $self->{f} == 6;
+    $format = "Sinusoidal" if $self->{f} == 7;
+    $format = "Lambert Equal Area Cylindrical" if $self->{f} == 8;
+    $format = "Lambert Azimuthal" if $self->{f} == 9;
+    $format = "Albers Equal Area Conical" if $self->{f} == 10;
+
+    my $mode;
+    $mode = "LDR" if $self->{R} == 0;
+    $mode = "HDR" if $self->{R} == 1;
+
+    push @report, ['Dimensions', $self->{w} .'x'. $self->{h}];
+    push @report, ['Megapixels', int ($self->{w} * $self->{h} / 1024 / 1024 * 10) / 10];
+    push @report, ['Format', $format];
+    push @report, ['Horizontal Field of View', $self->{v}];
+    push @report, ['File type', $self->{n}];
+    push @report, ['Exposure Value', $self->{E}];
+    push @report, ['Stitching mode', $mode] if defined $mode;
+    push @report, ['Bit depth', $self->{T}] if defined $self->{T};
+    push @report, ['Selection area', $self->{S}] if defined $self->{S};
+    [@report];
 }
 
 1;

@@ -31,15 +31,5 @@ my $tempfile = File::Spec->catfile ($tempdir, '021.txt');
 ok ($p->Write ($tempfile), "script written to $tempfile");
 }
 
-
-{
-my $tempfile = File::Spec->catfile ($tempdir, '021.jpg');
-ok ($p->Stitch ($tempfile), "stitched to $tempfile");;
-}
-
 $p->Panorama->Set (n => 'TIFF');
 
-{
-my $tempfile = File::Spec->catfile ($tempdir, '021.tif');
-ok ($p->Stitch ($tempfile), "stitched to $tempfile");;
-}

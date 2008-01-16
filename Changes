@@ -1,5 +1,17 @@
 Revision history for Panotools::Script.
 
+0.12
+    - remove Preview(), Optimise() and Stitch() methods
+    - enblend mask, merge mask rather than replace
+    - enblend-svg, render just masks, use enblend-mask to merge
+    - nona-mask, allow full command-line parameters
+    - pto2fulla align_image_stack based tca calculator
+    - ptoinfo hugin project reporting tool and gui wrapper
+    - erect2planet output pto project instead of rendering image
+    - read and write hugin image metadata and options in comment lines
+    - remove pto2tiff-gui due to conflict with hugin_stitch_project
+    - add .desktop files for Linux gui integration
+
 0.11
     - replace Image::Magick with Image::Size for sizing images
     - jpeg2qtvr fix CRLF bug on windows

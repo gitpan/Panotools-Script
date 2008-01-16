@@ -1,0 +1,97 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Panotools::Script;
+
+for my $path_pto (@ARGV)
+{
+    my $pto = new Panotools::Script;
+    $pto->Read ($path_pto);
+    print STDOUT "---\nHugin project file: $path_pto\n";
+
+    # general project info
+    print STDOUT "Project:\n";
+    print STDOUT '    Number of images: '. scalar (@{$pto->Image}) ."\n";
+    for my $item (@{$pto->Panorama->Report}, @{$pto->Option->Report}, @{$pto->Mode->Report})
+    {
+        print STDOUT '    '. (join ': ', @{$item}) ."\n";
+    }
+
+    # summarise control points
+    my $results = {};
+    for my $control (@{$pto->Control})
+    {
+        my $t = $control->{t};
+        $results->{$t} += 1;
+    }
+    print STDOUT "    Normal control points: ". $results->{0} ."\n" if (defined $results->{0});
+    delete $results->{0};
+    print STDOUT "    Horizontal control points: ". $results->{1} ."\n" if (defined $results->{1});
+    delete $results->{1};
+    print STDOUT "    Vertical control points: ". $results->{2} ."\n" if (defined $results->{2});
+    delete $results->{2};
+    print STDOUT "    Straight lines: ". scalar (keys %{$results}) ."\n" if (scalar keys %{$results});
+
+    for my $index (0 .. scalar (@{$pto->Image}) - 1)
+    {
+        # summarise input image
+        print STDOUT "Image $index:\n";
+        for my $item (@{$pto->Image->[$index]->Report}, @{$pto->ImageMetadata->[$index]->Report}, @{$pto->Variable->Report ($index)})
+        {
+            print STDOUT '    '. (join ': ', @{$item}) ."\n";
+        }
+
+        # summarise control points for this image
+        my $results = {};
+        for my $control (@{$pto->Control})
+        {
+            my $N = $control->{N};
+            my $n = $control->{n};
+            next unless ($n == $index or $N == $index);
+            $results->{$N} += 1;
+            $results->{$n} += 1;
+        }
+        delete $results->{$index};
+        for my $key (sort keys %{$results})
+        {
+            print STDOUT "    Connections to image $key: ". $results->{$key} ."\n";
+        }
+    }
+}
+
+__END__
+
+=head1 NAME
+
+ptoinfo - Prints human readable reports for .pto files
+
+=head1 Synopsis
+
+  ptoinfo project1.pto [project2.pto ...]
+
+=head1 DESCRIPTION
+
+Takes one or more hugin .pto projects and outputs a text report on STDOUT,
+the report is incidentally in YAML format.
+
+=head1 Calling syntax
+
+  ptoinfo <pto-file> <pto-file> ...
+
+=head1 License
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=head1 See Also
+
+L<http://panotools.sourceforge.net/>
+
+=head1 Author
+
+Bruno Postle, E<lt>bruno (at) postle.netE<gt>
+
+=cut
+

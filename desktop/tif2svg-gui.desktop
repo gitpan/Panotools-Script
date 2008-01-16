@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Encoding=UTF-8
+Name=Multilayer SVG creator
+Comment=Create a multilayer SVG file from multiple TIFF files
+Exec=tif2svg-gui %F
+Icon=hugin
+Terminal=false
+Type=Application
+Categories=Graphics;
+MimeType=image/tiff;
+GenericName=Multilayer SVG creator

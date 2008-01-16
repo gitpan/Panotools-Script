@@ -35,30 +35,12 @@ Optional stitching modes are described by an 'm' line
                     5 - bilinear,
                     6 - nearest neighbor,
                     7 - sinc1024
- 
 
-                    8 - Box
-                    9 - Bartlett/Triangle
-                    10 - Hermite
-                    11 - Hanning
-                    12 - Hamming
-                    13 - Blackmann
-                    14 - Gaussian 1/sqrt(2)
-                    15 - Gaussian 1/2
-                    16 - Quadardic
-                    17 - Cubic
-                    18 - Catmull-Rom
-                    19 - Mitchell
-                    20 - Lanczos2
-                    21 - Lanczos3
-                    22 - Blackman/Bessel
-                    23 - Blackman/sinc
-                    
-  f0		   Invoke Faster Transformation also invoked by creating a file named "pano12_opt.txt" 
-                    in the same foler as project with a line FAST_TRANSFORM
+   m2           Huber Sigma
 
-  p0           Create panorama after optimizing control points
-                   0 no(default), 1 yes
+   p0.001       Photometric Huber Sigma
+
+   s1           Photometric Symmetric Error
 
 =cut
 
@@ -69,12 +51,35 @@ sub _defaults
     $self->{i} = "0";
 }
 
-sub _valid { return '^([fgip])(.*)' }
+sub _valid { return '^([fgimps])(.*)' }
 
 sub Identifier
 {
     my $self = shift;
     return "m";
+}
+
+sub Report
+{
+    my $self = shift;
+    my @report;
+
+    my $interpolator = 'UNKNOWN';
+    $interpolator = 'poly3' if $self->{i} == 0;
+    $interpolator = 'spline16' if $self->{i} == 1;
+    $interpolator = 'spline36' if $self->{i} == 2;
+    $interpolator = 'sinc256' if $self->{i} == 3;
+    $interpolator = 'spline64' if $self->{i} == 4;
+    $interpolator = 'bilinear' if $self->{i} == 5;
+    $interpolator = 'nearest neighbor' if $self->{i} == 6;
+    $interpolator = 'sinc1024' if $self->{i} == 7;
+
+    push @report, ['Gamma', $self->{g}] if defined $self->{g};
+    push @report, ['Interpolator', $interpolator] if defined $self->{i};
+    push @report, ['Huber Sigma', $self->{m}] if defined $self->{m};
+    push @report, ['Photometric Huber Sigma', $self->{p}] if defined $self->{p};
+    push @report, ['Photometric Symmetric Error', $self->{s}] if defined $self->{s};
+    [@report];
 }
 
 1;

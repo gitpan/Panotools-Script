@@ -21,9 +21,12 @@ while (@ARGV)
     {
         $outfile = File::Spec->rel2abs (shift @ARGV);
         $script = File::Spec->rel2abs (shift @ARGV);
+        while (@ARGV)
+        {
+            push @files, (shift @ARGV);
+        }
         next;
     }
-    if ($arg =~ /\.[[:alnum:]]+$/i) {push @files, $arg}
     else {push @parameters, $arg}
 }
 
@@ -74,7 +77,10 @@ for my $image (@{$pano->Image})
     $index++;
 }
 
-$pano->Stitch ($outfile, @parameters);
+my $pto_temp = "$script.nona-mask.$$.pto";
+$pano->Write ($pto_temp);
+system ('nona', @parameters, '-o', $outfile, $pto_temp);
+unlink $pto_temp;
 
 __END__
 

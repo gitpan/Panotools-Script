@@ -1,0 +1,74 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+use Panotools::Script;
+
+my $results;
+my $pi = 3.14159;
+
+for my $file (@ARGV)
+{
+    my $pto = new Panotools::Script;
+    $pto->Read ($file);
+    my $green = $pto->Image->[0];
+    my $red   = $pto->Image->[1];
+    my $blue  = $pto->Image->[2];
+
+    my $red_scale = sin ($green->{v} * $pi / 360) / sin ($red->{v} * $pi / 360);
+    my $blue_scale = sin ($green->{v} * $pi / 360) / sin ($blue->{v} * $pi / 360);
+
+    my $red_d  = 1 - $red->{a}  - $red->{b}  - $red->{c};
+    my $blue_d = 1 - $blue->{a} - $blue->{b} - $blue->{c};
+
+    my $red_a = sprintf "%f", $red->{a} * $red_scale * $red_scale * $red_scale * $red_scale;
+    my $red_b = sprintf "%f", $red->{b} * $red_scale * $red_scale * $red_scale;
+    my $red_c = sprintf "%f", $red->{c} * $red_scale * $red_scale;
+    $red_d = sprintf "%f", $red_d * $red_scale;
+
+    my $blue_a = sprintf "%f", $blue->{a} * $blue_scale * $blue_scale * $blue_scale * $blue_scale;
+    my $blue_b = sprintf "%f", $blue->{b} * $blue_scale * $blue_scale * $blue_scale;
+    my $blue_c = sprintf "%f", $blue->{c} * $blue_scale * $blue_scale;
+    $blue_d = sprintf "%f", $blue_d * $blue_scale;
+
+    $results .= "-r $red_a:$red_b:$red_c:$red_d -b $blue_a:$blue_b:$blue_c:$blue_d\n";
+}
+
+print $results;
+
+__END__
+
+=head1 NAME
+
+pto2fulla - extract fulla TCA parameters from a prepared .pto project
+
+=head1 Synopsis
+
+  pto2fulla tca.pto
+
+=head1 DESCRIPTION
+
+Takes hugin .pto projects created according to this tutorial:
+L<http://hugin.sourceforge.net/tutorials/tca/>
+outputs 'fulla' command-line parameters suitable for correcting
+transverse chromatic aberration.
+
+=head1 Calling syntax
+
+  pto2fulla <pto-file>
+
+=head1 License
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=head1 See Also
+
+L<http://panotools.sourceforge.net/>
+
+=head1 Author
+
+Bruno Postle, E<lt>bruno (at) postle.netE<gt>
+
+=cut
+

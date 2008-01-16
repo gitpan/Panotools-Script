@@ -93,4 +93,25 @@ sub _sanitise
     }
 }
 
+sub Report
+{
+    my $self = shift;
+    my $index = shift;
+    my @report;
+
+    push @report, 'Roll' if $self->{$index}->{r};
+    push @report, 'Pitch' if $self->{$index}->{p};
+    push @report, 'Yaw' if $self->{$index}->{y};
+    push @report, 'Field of View' if $self->{$index}->{v};
+    push @report, 'a' if $self->{$index}->{a};
+    push @report, 'b' if $self->{$index}->{b};
+    push @report, 'c' if $self->{$index}->{c};
+    push @report, 'd' if $self->{$index}->{d};
+    push @report, 'e' if $self->{$index}->{e};
+    push @report, 'g' if $self->{$index}->{g};
+    push @report, 't' if $self->{$index}->{t};
+
+    [[('Optimise parameters', (join ',', @report))]];
+}
+
 1;

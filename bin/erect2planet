@@ -6,28 +6,29 @@ use File::Spec;
 use Panotools::Script;
 use Image::Size;
 
-my $erect = shift or die "usage\n  $0 equirectangular.tif";
-$erect = File::Spec->rel2abs ($erect);
+my $img_erect = shift or die "usage\n  $0 equirectangular.tif";
 
-# FIXME should accept transform parameters
+my $pto_sgraphic = $img_erect;
+$pto_sgraphic =~ s/\.([[:alnum:]]+)$/-sgraphic.pto/;
 
-my $sgraphic = $erect;
-
-$sgraphic =~ s/\.([[:alnum:]]+)$/-sgraphic/;
-
-my ($width, $height) = imgsize ($erect);
-
-my $face = $width;
+my ($width, $height) = imgsize ($img_erect);
+my $face = int (0.6 * $width);
+my ($volume, $directories, $file) = File::Spec->splitpath ($img_erect);
 
 my $stereographic = new Panotools::Script;
-$stereographic->Panorama->Set (v => 270, f => 4, u => 0, w => $face, h => $face, n => '"TIFF"');
-
-$stereographic->{stitcher} = 'nona';
-
-$stereographic->Image->[0] = new Panotools::Script::Line::Image;
-
-$stereographic->Image->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => 0, y => 0, n => "\"$erect\"");
-$stereographic->Stitch ($sgraphic);
+if (-e $pto_sgraphic)
+{
+    $stereographic->Read ($pto_sgraphic);
+    $stereographic->Panorama->Set (w => $face, h => $face);
+    $stereographic->Image->[0]->Set (w => $width, h => $height);
+}
+else
+{
+    $stereographic->Panorama->Set (v => 270, f => 4, u => 0, w => $face, h => $face, n => '"TIFF"');
+    $stereographic->Image->[0] = new Panotools::Script::Line::Image;
+    $stereographic->Image->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => 0, y => 0, n => "\"$file\"");
+}
+$stereographic->Write ($pto_sgraphic);
 
 __END__
 
@@ -41,12 +42,13 @@ erect2planet - Extract a stereographic 'little planet' from an equirectangular i
 
 =head1 DESCRIPTION
 
-Generates a suitably sized stereographic image from a 360 degree
+Generates a suitably sized stereographic .pto project from a 360 degree
 equirectangular image.  Input is in any image format understood by hugin,
 output is in TIFF format with a field of view of 270 degrees.
 
 The output filename is derived automatically from the input filename with
-'-sgraphic' appended.
+'-sgraphic.pto' appended.  Existing .pto files will not be clobbered but
+will be updated when input images change size.
 
 L<http://hugin.sourceforge.net/>
 
