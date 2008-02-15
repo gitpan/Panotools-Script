@@ -1,5 +1,9 @@
 Revision history for Panotools::Script.
 
+0.13
+    - new match-n-shift control point finder tool
+    - fix crash in ptoinfo
+
 0.12
     - remove Preview(), Optimise() and Stitch() methods
     - enblend mask, merge mask rather than replace

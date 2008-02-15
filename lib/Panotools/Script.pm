@@ -36,7 +36,7 @@ use File::Spec;
 
 use Storable qw/ dclone /;
 
-our $VERSION = 0.12;
+our $VERSION = 0.13;
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -68,7 +68,6 @@ sub _defaults
     $self->{output} = [];
     $self->{control} = [];
     $self->{controlmorph} = [];
-    $self->{basedir} = File::Spec->rel2abs (File::Spec->curdir);
 }
 
 =pod
@@ -86,8 +85,6 @@ sub Read
     close FILE;
 
     my ($volume, $directories, $file) = File::Spec->splitpath ($path);
-    $self->{basedir} = File::Spec->catpath ($volume, $directories, '');
-    $self->{basedir} = File::Spec->rel2abs ($self->{basedir});
 
     for my $line (@raw)
     {

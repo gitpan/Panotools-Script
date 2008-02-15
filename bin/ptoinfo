@@ -38,7 +38,10 @@ for my $path_pto (@ARGV)
     {
         # summarise input image
         print STDOUT "Image $index:\n";
-        for my $item (@{$pto->Image->[$index]->Report}, @{$pto->ImageMetadata->[$index]->Report}, @{$pto->Variable->Report ($index)})
+        my @items = @{$pto->Image->[$index]->Report};
+        push @items, @{$pto->ImageMetadata->[$index]->Report} if defined $pto->ImageMetadata->[$index];
+        push @items, @{$pto->Variable->Report ($index)};
+        for my $item (@items)
         {
             print STDOUT '    '. (join ': ', @{$item}) ."\n";
         }

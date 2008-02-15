@@ -3,16 +3,16 @@
 use strict;
 use warnings;
 use File::Temp qw/tempdir/;
-use File::Spec::Functions;
+use File::Spec;
 use File::Copy;
 
 die "Usage:\n  $0 image1_mask.tif image2_mask.tif [image3_mask.tif ...]\n" unless @ARGV;
 
 my $tempdir = tempdir (CLEANUP => 1);
 
-my $maskdir = catfile ($tempdir, 'mask');
-my $pushdir = catfile ($tempdir, 'push');
-my $workdir = catfile ($tempdir, 'work');
+my $maskdir = File::Spec->catfile ($tempdir, 'mask');
+my $pushdir = File::Spec->catfile ($tempdir, 'push');
+my $workdir = File::Spec->catfile ($tempdir, 'work');
 
 mkdir $maskdir;
 mkdir $pushdir;
@@ -21,9 +21,9 @@ mkdir $workdir;
 for my $path (@ARGV)
 {
     my ($vol, $dir, $file) = File::Spec->splitpath ($path);
-    my $maskdir_file = catfile ($maskdir, $file);
-    my $pushdir_file = catfile ($pushdir, $file);
-    my $workdir_file = catfile ($workdir, $file);
+    my $maskdir_file = File::Spec->catfile ($maskdir, $file);
+    my $pushdir_file = File::Spec->catfile ($pushdir, $file);
+    my $workdir_file = File::Spec->catfile ($workdir, $file);
     system ('convert', '-threshold', '99%', $path, $maskdir_file);
     system ('convert', '-negate', $maskdir_file, $pushdir_file);
     copy ($path, $workdir_file);
@@ -32,15 +32,15 @@ for my $path (@ARGV)
 for my $path (@ARGV)
 {
     my ($vol, $dir, $file) = File::Spec->splitpath ($path);
-    my $tempdir_file = catfile ($tempdir, $file);
-    my $workdir_file = catfile ($workdir, $file);
+    my $tempdir_file = File::Spec->catfile ($tempdir, $file);
+    my $workdir_file = File::Spec->catfile ($workdir, $file);
 
     for my $temp (@ARGV)
     {
         next if ($temp eq $path);
         my ($vol, $dir, $temp) = File::Spec->splitpath ($temp);
-        my $pushdir_temp = catfile ($pushdir, $temp);
-        my $maskdir_temp = catfile ($maskdir, $temp);
+        my $pushdir_temp = File::Spec->catfile ($pushdir, $temp);
+        my $maskdir_temp = File::Spec->catfile ($maskdir, $temp);
         system ('composite', $pushdir_temp, $workdir_file, $maskdir_temp, $tempdir_file);
         move ($tempdir_file, $workdir_file);
     }

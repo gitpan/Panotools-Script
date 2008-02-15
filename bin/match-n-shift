@@ -1,0 +1,309 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use File::Spec;
+use Getopt::Long;
+use Pod::Usage;
+use Image::Size;
+use Math::Trig;
+use Panotools::Script;
+use File::Temp qw/tempdir/;
+
+my $path_oto;
+my $pix_max = 800;
+my $points = 10;
+my $noransac = 0;
+my $nomagick = 0;
+my $refine = 0;
+my $projection = 0;
+my $deg_fov = 50;
+my $crop_s = undef;
+my $clean = 0;
+my $help = 0;
+
+GetOptions ('o|output=s' => \$path_oto,
+            's|size=i' => \$pix_max,
+            'p|points=i' => \$points,
+            'n|noransac' => \$noransac,
+            'm|nomagick' => \$nomagick,
+            'r|refine' => \$refine,
+            'f|projection=i' => \$projection,
+            'v|fov=f' => \$deg_fov,
+            'k|selection=s' => \$crop_s,
+            'c|clean' => \$clean,
+            'h|help' => \$help);
+
+my @paths_input = @ARGV;
+
+pod2usage (-verbose => 2) if $help;
+pod2usage (2) unless (defined $path_oto and scalar @paths_input > 1);
+
+# disable ransac for wideangle shots
+my $ransac = 1; $ransac = 0 if ($noransac or $deg_fov > 60);
+# extra refine options
+my @refine = (); @refine = ('--refine', '--keep-unrefinable', 0) if $refine;
+
+my @paths_output = ();
+
+my $tempdir = tempdir (CLEANUP => $clean);
+print STDOUT "using $tempdir\n";
+
+my $index = 0;
+
+for my $path_input (@paths_input)
+{
+    # create a smaller version of the original photo
+    my $path_input_small = File::Spec->catfile ($tempdir, "small_$index.tif");
+    # if no ImageMagick, then use full size image, slooooow
+    if ($nomagick)
+    {
+        $path_input_small = File::Spec->rel2abs ($path_input);
+    }
+    else
+    {
+        system ('convert', '-depth', 8, '-geometry', $pix_max.'x'.$pix_max,
+            $path_input, $path_input_small);
+    }
+
+    # create small stereographic version
+    my ($pix_width, $pix_height) = imgsize ($path_input_small);
+    my $path_pto_temp = File::Spec->catfile ($tempdir, "$index.pto");
+
+    # don't use stereographic if projection isn't azimuthal
+    my $projection_panorama = 4;
+    $projection_panorama = 1 if $projection == 1;
+    $projection_panorama = 2 if $projection == 4;
+
+    my $pto = new Panotools::Script;
+    $pto->Panorama->Set (v => $deg_fov, E => 0, f => $projection_panorama, u => 0,
+        w => $pix_width, h => $pix_height, n => '"TIFF"');
+    $pto->Image->[0] = new Panotools::Script::Line::Image;
+    $pto->Image->[0]->Set (w => $pix_width, h => $pix_height, v => $deg_fov,
+        f => $projection, Eev => 0, r => 0, p => 0, y => 0, n => "\"$path_input_small\"");
+    $pto->Write ($path_pto_temp);
+
+    my $path_output_small = File::Spec->catfile ($tempdir, "sgraph_$index.tif");
+
+    system ('nona', '-p', 'UINT8', '-o', $path_output_small, $path_pto_temp);
+    $index++;
+    push @paths_output, $path_output_small;
+}
+
+my @paths_key = ();
+
+# create XML keyfiles for stereographic version
+for my $path_output_small (@paths_output)
+{
+    my $path_key = "$path_output_small.key";
+    push @paths_key, $path_key;
+    next if (-e $path_key and not $clean);
+    system ('generatekeys', $path_output_small, $path_key, $pix_max + 1);
+}
+
+# create a project file based on the keyfiles
+system ('autopano', @refine, '--ransac', $ransac,
+    '--maxmatches', $points, $path_oto, @paths_key);
+
+# delete temporary keyfiles
+for my $path_key (@paths_key)
+{
+    unlink $path_key if ($clean);
+}
+
+# Read in the generated project file
+my $oto = new Panotools::Script;
+$oto->Read ($path_oto);
+
+# fix image lines
+$index = 0;
+for my $image (@{$oto->Image})
+{
+    $image->{f} = $projection;
+}
+
+# fix control points
+for my $point (@{$oto->Control})
+{
+     my $n = $oto->Image->[$point->{n}];
+
+     $n->{v} = $deg_fov;
+     $n->{f} = $projection;
+
+     my $n_fov = $n->{v};
+     $n_fov = $oto->Image->[$1]->{v} if ($n_fov =~ /^=([[:digit:]]+)/);
+
+     # first convert back from stereographic
+     ($point->{x}, $point->{y}) =
+            from_sgraphic ({ rad_fov => deg2rad ($n_fov),
+                             projection => $n->{f},
+                             pix_x => $point->{x}, pix_y => $point->{y},
+                             pix_width => $n->{w}, pix_height => $n->{h}});
+
+     # scale back to original image dimensions
+     my ($n_pix_width, $n_pix_height) = imgsize (File::Spec->rel2abs ($paths_input[$point->{n}]));
+     my $n_scale_w = $n_pix_width / $n->{w};
+     my $n_scale_h = $n_pix_height / $n->{h};
+     $point->{x} *= $n_scale_w;
+     $point->{y} *= $n_scale_h;
+
+
+     my $N = $oto->Image->[$point->{N}];
+
+     $N->{v} = $deg_fov;
+     $N->{f} = $projection;
+
+     my $N_fov = $N->{v};
+     $N_fov = $oto->Image->[$1]->{v} if ($N_fov =~ /^=([[:digit:]]+)/);
+
+     # first convert back from stereographic
+     ($point->{X}, $point->{Y}) =
+            from_sgraphic ({ rad_fov => deg2rad ($N_fov),
+                             projection => $N->{f},
+                             pix_x => $point->{X}, pix_y => $point->{Y},
+                             pix_width => $N->{w}, pix_height => $N->{h}});
+
+     # scale back to original image dimensions
+     my ($N_pix_width, $N_pix_height) = imgsize (File::Spec->rel2abs ($paths_input[$point->{N}]));
+     my $N_scale_w = $N_pix_width / $N->{w};
+     my $N_scale_h = $N_pix_height / $N->{h};
+     $point->{X} *= $N_scale_w;
+     $point->{Y} *= $N_scale_h;
+}
+
+# fix image lines
+$index = 0;
+for my $image (@{$oto->Image})
+{
+    $image->{n} = '"'. $paths_input[$index] .'"';
+    ($image->{w}, $image->{h}) = imgsize (File::Spec->rel2abs ($paths_input[$index]));
+    $image->{S} = $crop_s if defined $crop_s;
+    $image->{v} = '=0' if $index > 0;
+    $image->{d} = '=0' if $index > 0;
+    $image->{e} = '=0' if $index > 0;
+    $index++;
+}
+
+$oto->Write ($path_oto);
+
+# voodoo
+sub from_sgraphic
+{
+    my $args = shift;
+
+    my $A = $args->{rad_fov} / 2;
+    my $B = a2b ($A);
+    my $C = b2c ($B);
+
+    my $pix_w2 = $args->{pix_width} / 2;
+    my $pix_h2 = $args->{pix_height} / 2;
+
+    my $pix_dx = $args->{pix_x} - $pix_w2;
+    my $pix_dy = $args->{pix_y} - $pix_h2;
+    my $pix_b1 = dist ($pix_dx, $pix_dy);
+    return ($pix_w2, $pix_h2) if ($pix_b1 == 0);
+
+    my $b1 = ($pix_b1 / $pix_w2) * $B;
+    my $a1 = b2a ($b1);
+    my $c1 = b2c ($b1);
+    my $pix_a1 = ($a1 / $A) * $pix_w2;
+    my $pix_c1 = ($c1 / $C) * $pix_w2;
+
+    my $b1_a1 = $pix_a1 / $pix_b1;
+    my $b1_c1 = $pix_c1 / $pix_b1;
+    return (($pix_dx * $b1_a1) + $pix_w2, ($pix_dy * $b1_a1) + $pix_h2)
+        if ($args->{projection} == 2 or $args->{projection} == 3); # fisheye
+    return (($pix_dx * $b1_c1) + $pix_w2, ($pix_dy * $b1_c1) + $pix_h2)
+        if ($args->{projection} == 0); # rectilinear
+    print "Projection ". $args->{projection} ." is not azimuthal!\n";
+    return ($args->{pix_x}, $args->{pix_y});
+}
+
+sub a2b
+{
+    my $a = shift;
+    2 * tan ($a / 2);
+}
+
+sub b2a
+{
+    my $b = shift;
+    2 * atan ($b / 2);
+}
+
+sub b2c
+{
+    my $b = shift;
+    tan (2 * atan ($b / 2));
+}
+
+sub c2b
+{
+    my $c = shift;
+    2 * tan (atan ($c) / 2);
+}
+
+sub dist
+{
+    my ($x, $y) = @_;
+    sqrt (($x * $x) + ($y * $y));
+}
+
+exit 0;
+
+__END__
+
+=head1 NAME
+
+match-n-shift - wrapper to run autopano-sift on stereographic versions of photos
+
+=head1 SYNOPSIS
+
+match-n-shift [options] --output project.pto image1 image2 [...]
+
+ Options:
+  -o | --output name    Filename of created panorama project
+  -s | --size number    Downsize images until width and height is
+                          smaller than number, default 800
+  -p | --points number  Number of generated control points between,
+                          each pair, default: 10
+  -n | --noransac       No ransac detection, useful for fisheye images
+  -m | --nomagick       Don't downscale with 'convert' before remapping,
+                          use if your system doesn't have ImageMagick.
+  -r | --refine         Refine the found control points using the
+                          original images, delete unrefinable.
+  -f | --projection     Panotools style input projection number. Use
+                          0 for rectilinear, 2 for circular fisheye and
+                          3 for full-frame fisheye images.
+  -v | --fov            Horizontal field of view in degrees
+  -k | --selection      Crop selection boundary, eg -459,2459,-57,2861
+  -c | --clean          Delete all temporary files afterwards.
+  -h | --help           Outputs help documentation.
+
+=head1 DESCRIPTION
+
+B<match-n-shift> takes a list of image files and creates a hugin
+compatible project file containing control points linking the images together.
+
+It does this by creating scaled stereographic versions of the original photos
+and identifying control points, then takes the generated .oto file and rewrites
+the control point coordinates assuming that they are based on stereographic
+versions of the input photos, the resulting .oto file should be applicable to
+the original photos.
+
+=head1 LICENSE
+
+This file is licensed under the same terms as autopano-sift-C itself
+
+=head1 SEE ALSO
+
+L<http://hugin.sourceforge.net/>
+L<http://cs.tu-berlin.de/~nowozin/autopano-sift/>
+
+=head1 AUTHOR
+
+Bruno Postle - February 2008.
+
+=cut
+
+=begin perl

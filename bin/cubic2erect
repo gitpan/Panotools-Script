@@ -20,7 +20,6 @@ my $height = int ($face * 3.1416 / 2);
 my $width = $height * 2;
 
 $pano->Panorama->Set (v => 360, f => 2, u => 0, w => $width, h => $height, n => "\"TIFF c:DEFLATE\"");
-$pano->{basedir} = File::Spec->curdir;
 
 $pano->Image->[0] = new Panotools::Script::Line::Image;
 $pano->Image->[0]->Set (v => 90, w => $face, h => $face, f => 0, r => 0, p => 0, y => 0, n => "\"" . File::Spec->rel2abs ($images[0]) . "\"");
