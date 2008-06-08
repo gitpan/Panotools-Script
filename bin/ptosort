@@ -1,0 +1,55 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Panotools::Script;
+
+my ($pto_in, $pto_out) = @ARGV;
+
+my $pto = new Panotools::Script;
+$pto->Read ($pto_in);
+
+my $points = $pto->Control;
+
+@{$points} = sort {$a->{y} <=> $b->{y}} @{$points};
+
+$pto->Write ($pto_out);
+
+__END__
+
+=head1 NAME
+
+ptosort - sorts .pto control points vertically
+
+=head1 Synopsis
+
+  ptosort project_in.pto project_out.pto
+
+=head1 DESCRIPTION
+
+Sorts control points, putting them in vertical order.  Useful if you want to
+be able to select and delete 'sky' points in hugin.
+
+=head1 Calling syntax
+
+  ptoinfo <pto-file> <pto-file>
+
+(input and output can be the same file)
+
+=head1 License
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+=head1 See Also
+
+L<http://hugin.sourceforge.net/>
+
+=head1 Author
+
+Bruno Postle, E<lt>bruno (at) postle.netE<gt>
+
+=cut
+

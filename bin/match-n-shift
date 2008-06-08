@@ -14,11 +14,12 @@ my $path_oto;
 my $pix_max = 800;
 my $points = 10;
 my $noransac = 0;
-my $nomagick = 0;
+my $matchpoint = 0;
 my $refine = 0;
 my $projection = 0;
 my $deg_fov = 50;
 my $crop_s = undef;
+my $align = 0;
 my $clean = 0;
 my $help = 0;
 
@@ -26,11 +27,12 @@ GetOptions ('o|output=s' => \$path_oto,
             's|size=i' => \$pix_max,
             'p|points=i' => \$points,
             'n|noransac' => \$noransac,
-            'm|nomagick' => \$nomagick,
+            'm|matchpoint' => \$matchpoint,
             'r|refine' => \$refine,
             'f|projection=i' => \$projection,
-            'v|fov=f' => \$deg_fov,
+            'v|fov=s' => \$deg_fov,
             'k|selection=s' => \$crop_s,
+            'a|align' => \$align,
             'c|clean' => \$clean,
             'h|help' => \$help);
 
@@ -39,6 +41,8 @@ my @paths_input = @ARGV;
 pod2usage (-verbose => 2) if $help;
 pod2usage (2) unless (defined $path_oto and scalar @paths_input > 1);
 
+# decimal separator workaround
+$deg_fov =~ s/,.*//;
 # disable ransac for wideangle shots
 my $ransac = 1; $ransac = 0 if ($noransac or $deg_fov > 60);
 # extra refine options
@@ -53,39 +57,39 @@ my $index = 0;
 
 for my $path_input (@paths_input)
 {
-    # create a smaller version of the original photo
-    my $path_input_small = File::Spec->catfile ($tempdir, "small_$index.tif");
-    # if no ImageMagick, then use full size image, slooooow
-    if ($nomagick)
-    {
-        $path_input_small = File::Spec->rel2abs ($path_input);
-    }
-    else
-    {
-        system ('convert', '-depth', 8, '-geometry', $pix_max.'x'.$pix_max,
-            $path_input, $path_input_small);
-    }
+    $path_input = File::Spec->rel2abs ($path_input);
 
     # create small stereographic version
-    my ($pix_width, $pix_height) = imgsize ($path_input_small);
-    my $path_pto_temp = File::Spec->catfile ($tempdir, "$index.pto");
+    my ($pix_width_input, $pix_height_input) = imgsize ($path_input);
+    my $pix_width_small = $pix_max;
+    my $pix_height_small = int ($pix_height_input * $pix_width_small / $pix_width_input);
 
     # don't use stereographic if projection isn't azimuthal
     my $projection_panorama = 4;
     $projection_panorama = 1 if $projection == 1;
     $projection_panorama = 2 if $projection == 4;
 
+    # work around PTmender bug with unspecified crop boundary
+    my $projection_temp = $projection;
+    $projection_temp = 3 if ($projection == 2);
+
     my $pto = new Panotools::Script;
-    $pto->Panorama->Set (v => $deg_fov, E => 0, f => $projection_panorama, u => 0,
-        w => $pix_width, h => $pix_height, n => '"TIFF"');
+    $pto->Panorama->Set (v => $deg_fov, E => 0, f => $projection_panorama,
+        w => $pix_width_small, h => $pix_height_small, n => '"TIFF_m"');
     $pto->Image->[0] = new Panotools::Script::Line::Image;
-    $pto->Image->[0]->Set (w => $pix_width, h => $pix_height, v => $deg_fov,
-        f => $projection, Eev => 0, r => 0, p => 0, y => 0, n => "\"$path_input_small\"");
+    $pto->Image->[0]->Set (w => $pix_width_input, h => $pix_height_input, v => $deg_fov,
+        f => $projection_temp, Eev => 0, r => 0, p => 0, y => 0, n => "\"$path_input\"");
+    # make script PTmender compatible
+    $pto->Mode->Set (i => 17);
+    delete $pto->Panorama->{E};
+    delete $pto->Image->[0]->{Eev};
+    my $path_pto_temp = File::Spec->catfile ($tempdir, "$index.pto");
     $pto->Write ($path_pto_temp);
 
     my $path_output_small = File::Spec->catfile ($tempdir, "sgraph_$index.tif");
 
-    system ('nona', '-p', 'UINT8', '-o', $path_output_small, $path_pto_temp);
+    system ('PTmender', '-o', $path_output_small, $path_pto_temp);
+    print STDOUT "Created $path_output_small\n";
     $index++;
     push @paths_output, $path_output_small;
 }
@@ -98,7 +102,14 @@ for my $path_output_small (@paths_output)
     my $path_key = "$path_output_small.key";
     push @paths_key, $path_key;
     next if (-e $path_key and not $clean);
-    system ('generatekeys', $path_output_small, $path_key, $pix_max + 1);
+    if ($matchpoint)
+    {
+        system ('matchpoint', $path_output_small, $path_key);
+    }
+    else
+    {
+        system ('generatekeys', $path_output_small, $path_key, $pix_max + 1);
+    }
 }
 
 # create a project file based on the keyfiles
@@ -178,13 +189,24 @@ for my $image (@{$oto->Image})
     $image->{n} = '"'. $paths_input[$index] .'"';
     ($image->{w}, $image->{h}) = imgsize (File::Spec->rel2abs ($paths_input[$index]));
     $image->{S} = $crop_s if defined $crop_s;
-    $image->{v} = '=0' if $index > 0;
-    $image->{d} = '=0' if $index > 0;
-    $image->{e} = '=0' if $index > 0;
+    # link all lens parameters
+    $image->Set (v => '=0', d => '=0', e => '=0',
+        Ra => '=0', Rb => '=0', Rc => '=0', Rd => '=0', Re => '=0',
+        Va => '=0', Vb => '=0', Vc => '=0', Vd => '=0', Vx => '=0', Vy => '=0')
+            if ($index > 0);
     $index++;
 }
 
-$oto->Write ($path_oto);
+if ($align)
+{
+    my $tempfile = File::Spec->catfile ($tempdir, 'align.oto');
+    $oto->Write ($tempfile);
+    system ('autooptimiser', '-a', '-l', '-s', '-o', $path_oto, $tempfile);
+}
+else
+{
+    $oto->Write ($path_oto);
+}
 
 # voodoo
 sub from_sgraphic
@@ -215,7 +237,7 @@ sub from_sgraphic
         if ($args->{projection} == 2 or $args->{projection} == 3); # fisheye
     return (($pix_dx * $b1_c1) + $pix_w2, ($pix_dy * $b1_c1) + $pix_h2)
         if ($args->{projection} == 0); # rectilinear
-    print "Projection ". $args->{projection} ." is not azimuthal!\n";
+    print STDOUT "Projection ". $args->{projection} ." is not azimuthal!\n";
     return ($args->{pix_x}, $args->{pix_y});
 }
 
@@ -268,8 +290,8 @@ match-n-shift [options] --output project.pto image1 image2 [...]
   -p | --points number  Number of generated control points between,
                           each pair, default: 10
   -n | --noransac       No ransac detection, useful for fisheye images
-  -m | --nomagick       Don't downscale with 'convert' before remapping,
-                          use if your system doesn't have ImageMagick.
+  -m | --matchpoint     Use matchpoint from the hugin project, default
+                          is generatekeys from autopano-sift-C
   -r | --refine         Refine the found control points using the
                           original images, delete unrefinable.
   -f | --projection     Panotools style input projection number. Use
@@ -277,6 +299,7 @@ match-n-shift [options] --output project.pto image1 image2 [...]
                           3 for full-frame fisheye images.
   -v | --fov            Horizontal field of view in degrees
   -k | --selection      Crop selection boundary, eg -459,2459,-57,2861
+  -a | --align          Attempt to align images.
   -c | --clean          Delete all temporary files afterwards.
   -h | --help           Outputs help documentation.
 
@@ -293,7 +316,10 @@ the original photos.
 
 =head1 LICENSE
 
-This file is licensed under the same terms as autopano-sift-C itself
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
 
 =head1 SEE ALSO
 

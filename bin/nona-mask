@@ -8,6 +8,7 @@ use Panotools::Script;
 
 my @parameters;
 my @files;
+my %images;
 my $outfile;
 my $script;
 my $tempdir = tempdir (CLEANUP => 1);
@@ -17,17 +18,33 @@ my $tempdir = tempdir (CLEANUP => 1);
 while (@ARGV)
 {
     my $arg = shift @ARGV;
-    if ($arg =~ /-o/)
+    if ($arg =~ /^-o/)
     {
         $outfile = File::Spec->rel2abs (shift @ARGV);
-        $script = File::Spec->rel2abs (shift @ARGV);
-        while (@ARGV)
-        {
-            push @files, (shift @ARGV);
-        }
-        next;
     }
-    else {push @parameters, $arg}
+    elsif ($arg =~ /^-v/ || $arg =~ /^-c/ )
+    {
+       push @parameters, $arg;
+    }
+    elsif ($arg =~ /^-i/)
+    {
+      my $img = shift @ARGV;
+      $img =~ s/^([0-9]+)[^0-9]*$/$1/g;
+      $images{$img} = 1;
+    }
+    elsif ($arg =~ /^-/)
+    {
+       push @parameters, $arg;
+       push @parameters, (shift @ARGV);
+    }
+    elsif ( ! $script )
+    {
+      $script = File::Spec->rel2abs ( $arg );
+    }
+    else
+    {
+      push @files, $arg;
+    }
 }
 
 die "Usage: $0 [options] -o output project_file (image files)" unless ($outfile && $script);
@@ -45,9 +62,10 @@ for my $file (@files)
     $index++;
 }
 
+my $i = 0;
 for my $image (@{$pano->Image})
 {
-    my $tempfile = File::Spec->catfile ($tempdir, "$index.tif");
+    my $tempfile = File::Spec->catfile ($tempdir, "$i.tif");
     my $name = $image->{n};
     $name =~ s/(^"|"$)//g;
     my $prefix = $name;
@@ -56,6 +74,14 @@ for my $image (@{$pano->Image})
     # prefer TIF or SVG versions if they exist
     $name = "$prefix.tif" if (-e "$prefix.tif");
     $name = "$prefix.svg" if (-e "$prefix.svg");
+
+    # skip mask generation if -i argument given and no mask images for those
+    if ( keys %images && ! exists $images{$i} )
+    {
+        $i++;
+        $image->{n} = "\"$name\"";
+        next;
+    }
 
     my $mask = $prefix . '_mask.tif';
     if (-e $mask)
@@ -74,11 +100,16 @@ for my $image (@{$pano->Image})
     {
         $image->{n} = "\"$name\"";
     }
-    $index++;
+    $i++;
 }
 
 my $pto_temp = "$script.nona-mask.$$.pto";
 $pano->Write ($pto_temp);
+
+foreach (keys %images) {
+  push @parameters,"-i";
+  push @parameters,$_;
+}
 system ('nona', @parameters, '-o', $outfile, $pto_temp);
 unlink $pto_temp;
 
@@ -116,7 +147,10 @@ L<http://hugin.sourceforge.net/>
 
 =head1 License
 
-This software is distributed under the same terms as nona itself.
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
 
 =head1 See Also
 

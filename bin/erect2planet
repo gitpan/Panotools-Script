@@ -24,7 +24,8 @@ if (-e $pto_sgraphic)
 }
 else
 {
-    $stereographic->Panorama->Set (v => 270, f => 4, u => 0, w => $face, h => $face, n => '"TIFF"');
+    # set v => 253.7398 to get the horizon halfway between centre and edge
+    $stereographic->Panorama->Set (v => 253.7398, f => 4, u => 0, w => $face, h => $face, n => '"TIFF"');
     $stereographic->Image->[0] = new Panotools::Script::Line::Image;
     $stereographic->Image->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => 0, y => 0, n => "\"$file\"");
 }
@@ -54,7 +55,10 @@ L<http://hugin.sourceforge.net/>
 
 =head1 License
 
-This software is distributed under the same terms as hugin.
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
 
 =head1 See Also
 

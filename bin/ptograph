@@ -1,0 +1,95 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Panotools::Script;
+use GraphViz;
+
+for my $path_pto (@ARGV)
+{
+    my $pto = new Panotools::Script;
+    $pto->Read ($path_pto);
+
+    my $g = GraphViz->new (directed => 0, layout => 'neato', overlap => 'false');
+
+    for my $index (0 .. scalar (@{$pto->Image}) - 1)
+    {
+        $g->add_node ($index, shape => 'circle');
+
+        # summarise control points for this image
+        my $results = {};
+        for my $control (@{$pto->Control})
+        {
+            my $N = $control->{N};
+            my $n = $control->{n};
+            next unless ($n == $index or $N == $index);
+            $results->{$N} += 1;
+            $results->{$n} += 1;
+        }
+        delete $results->{$index};
+        for my $key (sort keys %{$results})
+        {
+            next if ($index gt $key);
+            $g->add_edge ($index => $key, weight => $results->{$key}, label => $results->{$key});
+        }
+    }
+
+    my $svg = $g->as_svg;
+
+    my @nodes = $svg =~ /(<ellipse.*?\/text>)/gs;
+    for my $xml_old (@nodes)
+    {
+        my ($cx, $cy, $index_real) = $xml_old =~ /cx="([0-9]+)".*cy="([0-9]+)".*>([0-9]+)<\/text>$/s;
+        $cx += -18; $cy += -27;
+        my $path_image = $pto->Image->[$index_real]->{n};
+        my $xml_new = "<image x=\"$cx\" y=\"$cy\" style=\"display:inline\"
+                   width=\"36\" height=\"54\" xlink:href=$path_image />\n";
+        $svg =~ s/$xml_old/$xml_new/;
+    }
+
+    open (OUTFILE, ">$path_pto.svg");
+    print OUTFILE $svg;
+    close OUTFILE;
+}
+
+__END__
+
+=head1 NAME
+
+ptograph - generates undirected graph reports for .pto files
+
+=head1 Synopsis
+
+  ptograph project1.pto [project2.pto ...]
+
+=head1 DESCRIPTION
+
+Takes one or more hugin .pto projects and writes an SVG report using
+the same file path with .svg appended.
+
+Each node represents one of the input photos in the project and the edges
+represent control-points connecting photos together.
+
+=head1 Calling syntax
+
+  ptograph <pto-file> <pto-file> ...
+
+=head1 License
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+=head1 See Also
+
+L<http://hugin.sourceforge.net/>
+L<GraphViz>
+
+=head1 Author
+
+Bruno Postle, E<lt>bruno (at) postle.netE<gt>
+
+=cut
+

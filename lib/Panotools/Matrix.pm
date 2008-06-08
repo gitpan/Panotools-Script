@@ -12,7 +12,7 @@ All angles are in radians not degrees.
 
 =head1 DESCRIPTION
 
-rollpitchyaw2matrix returns a Math::Matrix object that encapsulates a
+rollpitchyaw2matrix returns a matrix arrayref that encapsulates a
 transformation suitable for rotating a vector/point by three degrees of freedom
 (roll, pitch and yaw).
 
@@ -24,42 +24,27 @@ yaw is negative rotation around the z axis
 
 =head1 USAGE
 
-use Math::Matrix;
+use Panotools::Matrix qw(matrix2rollpitchyaw rollpitchyaw2matrix multiply);
 
-use Panotools::Matrix;
-
-my $point  = new Math::Matrix ([$x1], [$y1], [$z1]);
+my $point  = [[$x1], [$y1], [$z1]];
 
 my $matrix = rollpitchyaw2matrix ($roll, $pitch, $yaw);
 
-my $result = $matrix->multiply ($point);
+my $result = multiply ($matrix, $point);
 
 ($x2, $y2, $z2) = ($result->[0][0], $result->[1][0], $result->[2][0]);
 
-=head1 FILES
-
-Requires Math::Matrix as this is all matrix mathematics.
-
-=head1 COPYRIGHT
-
-Copyright (c) 2001 Bruno Postle <bruno@postle.net>. All Rights Reserved. This
-module is Free Software. It may be used, redistributed and/or modified under
-the same terms as Perl itself.
-
-This module is partly based on Math::Geometry by Greg McCarroll
-<greg@mccarroll.demon.co.uk>
-
 =cut
 
-use Math::Matrix;
 use Math::Trig;
 use Math::Trig ':radial';
 use strict;
+use warnings;
 
 use Exporter;
 use vars qw(@ISA @EXPORT);
 @ISA = qw(Exporter);
-@EXPORT = qw(rollpitchyaw2matrix matrix2rollpitchyaw); 
+@EXPORT = qw(rollpitchyaw2matrix matrix2rollpitchyaw multiply); 
 
 sub rollpitchyaw2matrix {
     my ($roll, $pitch, $yaw) = @_;
@@ -71,19 +56,70 @@ sub rollpitchyaw2matrix {
     my $cosy = cos ($yaw);
     my $siny = sin (0 - $yaw);
 
-    my $rollm  = new Math::Matrix ([        1,       0,       0 ],
-                                   [        0,   $cosr,-1*$sinr ],
-                                   [        0,   $sinr,   $cosr ]);
+    my $rollm  = [[        1,       0,       0 ],
+                  [        0,   $cosr,-1*$sinr ],
+                  [        0,   $sinr,   $cosr ]];
 
-    my $pitchm = new Math::Matrix ([    $cosp,       0,   $sinp ],
-                                   [        0,       1,       0 ],
-                                   [ -1*$sinp,       0,   $cosp ]);
+    my $pitchm = [[    $cosp,       0,   $sinp ],
+                  [        0,       1,       0 ],
+                  [ -1*$sinp,       0,   $cosp ]];
 
-    my $yawm   = new Math::Matrix ([    $cosy,-1*$siny,       0 ],
-                                   [    $siny,   $cosy,       0 ],
-                                   [        0,       0,       1 ]);
+    my $yawm   = [[    $cosy,-1*$siny,       0 ],
+                  [    $siny,   $cosy,       0 ],
+                  [        0,       0,       1 ]];
 
-    $yawm->multiply ($pitchm)->multiply ($rollm);
+    my $foo = multiply ($yawm, $pitchm);
+    multiply ($foo, $rollm);
+}
+
+sub transpose
+{
+    my $matrix_in = shift;
+    my $matrix_out;
+
+    my $n = 0;
+    for my $row (@{$matrix_in})
+    {
+        my $m = 0;
+        for my $column (@{$row})
+        {
+            $matrix_out->[$m]->[$n] = $matrix_in->[$n]->[$m];
+            $m++;
+        }
+        $n++;
+    }
+    return $matrix_out;
+}
+
+sub multiply
+{
+    my $matrix_a = shift;
+    my $transposed_b = transpose (shift);
+    my $matrix_out;
+
+    return undef if (scalar @{$matrix_a->[0]} != scalar @{$transposed_b->[0]});
+    for my $row (@{$matrix_a})
+    {
+        my $rescol = [];
+        for my $column (@{$transposed_b})
+        {
+            push (@{$rescol}, vekpro ($row, $column));
+        }
+        push (@{$matrix_out}, $rescol);
+    }
+    return $matrix_out;
+}
+
+sub vekpro
+{
+    my ($a, $b) = @_;
+    my $result = 0;
+
+    for my $i (0 .. scalar @{$a} - 1)
+    {
+        $result += $a->[$i] * $b->[$i];
+    }
+    $result;
 }
 
 # following copied from a spreadsheet by Stuart Milne

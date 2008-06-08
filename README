@@ -20,7 +20,6 @@ To install this module type the following:
 Dependencies
 ------------
 
-Math::Matrix
 Image::Size
 
 Some of the scripts require 'nona', 'freepv', 'enblend', 'autotrace' and
@@ -38,8 +37,10 @@ TODO
 Copyright and licence
 ---------------------
 
-This module is free software and is distributed under the
-same license as Perl itself.
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
 
 Copyright (C) 2002 Bruno Postle
 

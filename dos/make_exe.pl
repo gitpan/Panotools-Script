@@ -18,7 +18,9 @@ nona-mask
 process-masks
 pto2fulla
 pto2tiff
+ptograph
 ptoinfo
+ptosort
 qtvr2erect
 tif2svg
 transform-pano/;

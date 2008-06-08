@@ -1,4 +1,3 @@
-.cvsignore
 bin/cubic2erect
 bin/enblend-mask
 bin/enblend-svg
@@ -13,23 +12,26 @@ bin/nona-mask
 bin/process-masks
 bin/process-masks-gui
 bin/pto2fulla
-bin/ptoinfo
 bin/pto2tiff
+bin/ptograph
+bin/ptoinfo
 bin/ptoinfo-gui
+bin/ptosort
 bin/qtvr2erect
 bin/qtvr2erect-gui
 bin/tif2svg
 bin/tif2svg-gui
 bin/transform-pano
 Changes
-doc/match-n-shift.svg
-desktop/README
+desktop/enblend-svg.desktop
+desktop/erect2qtvr-gui.desktop
+desktop/process-masks-gui.desktop
 desktop/ptoinfo-gui.desktop
 desktop/qtvr2erect-gui.desktop
+desktop/README
 desktop/tif2svg-gui.desktop
-desktop/process-masks-gui.desktop
-desktop/erect2qtvr-gui.desktop
-desktop/enblend-svg.desktop
+doc/match-n-shift.svg
+dos/make_exe.pl
 lib/Panotools/Matrix.pm
 lib/Panotools/Script.pm
 lib/Panotools/Script/Line.pm
@@ -42,10 +44,10 @@ lib/Panotools/Script/Line/Option.pm
 lib/Panotools/Script/Line/Output.pm
 lib/Panotools/Script/Line/Panorama.pm
 lib/Panotools/Script/Line/Variable.pm
+LICENSE
 Makefile.PL
 MANIFEST			This list of files
 META.yml			Module meta-data (added by MakeMaker)
-make_exe.pl
 README
 t/001.parse-control.t
 t/002.parse-panorama.t

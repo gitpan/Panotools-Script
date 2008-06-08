@@ -12,10 +12,13 @@ my $variable = new Panotools::Script::Line::Variable;
 
 is (%{$variable}, 0, 'image variables are undef');
 
-$variable->Parse ("v v0 r0 p0 r1 p1 y1 e1 e2 b7\n\n");
+$variable->Parse ("v v0 r0 p0 r1 p1 y1 e1 e2 b7 Eev7\n\n");
 
 ok (exists $variable->{2}->{e}, 'e parameter of image 2 will be optimised');
 is ($variable->{0}->{e}, undef, 'e parameter of image 0 will not be optimised');
+ok (exists $variable->{7}->{Eev}, 'Eev parameter of image 7 will be optimised');
+is ($variable->{0}->{Eev}, undef, 'Eev parameter of image 0 will not be optimised');
+
 
 #use Data::Dumper; die Dumper $variable->Assemble;
 

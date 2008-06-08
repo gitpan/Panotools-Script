@@ -20,7 +20,7 @@ One or more parameters for optimisation form a 'v' line
   Please note: the 'v'-line must come after the the 'i'-lines.
   Optimization variables are listed together with the image number
   starting at 0. There can be several v-lines.
- 
+
   y0           Optimize yaw in image 0
   p1           Optimize pitch in image 1
   r2           Optimize roll in image 2
@@ -37,13 +37,13 @@ One or more parameters for optimisation form a 'v' line
   X1           Optimize x-coordinate of image 1, only for PTStereo
   Y2           Optimize y-coordinate of image 2, only for PTStereo
   Z6           Optimize z-coordinate of image 6, only for PTStereo
- 
+
        If a image has a parameter linked to another image only
        need to optimize the master.
 
 =cut
 
-sub _valid { return '^([abcdegprtvyXYZ])(.*)' }
+sub _valid { return '^([abcdegprtvyXYZ]|Eev|Er|Eb|Ra|Rb|Rc|Rd|Re|Va|Vb|Vc|Vd|Vx|Vy)(.*)' }
 
 sub Identifier
 {
@@ -56,10 +56,10 @@ sub Parse
     my $self = shift;
     my $string = shift || return 0;
     my $valid = $self->_valid;
-    my @res = $string =~ / ([a-z][0-9]+)/g;
+    my @res = $string =~ / ([a-zERV]+[0-9]+)/g;
     for my $token (grep { defined $_ } @res)
     {
-        my ($param, $image) = $token =~ /([a-z])([0-9]+)/;
+        my ($param, $image) = $token =~ /([a-zERV]+)([0-9]+)/;
         next unless defined $image;
         $self->{$image}->{$param} = 1;
     }
@@ -99,6 +99,8 @@ sub Report
     my $index = shift;
     my @report;
 
+    my $i = $self->{$index};
+
     push @report, 'Roll' if $self->{$index}->{r};
     push @report, 'Pitch' if $self->{$index}->{p};
     push @report, 'Yaw' if $self->{$index}->{y};
@@ -110,6 +112,12 @@ sub Report
     push @report, 'e' if $self->{$index}->{e};
     push @report, 'g' if $self->{$index}->{g};
     push @report, 't' if $self->{$index}->{t};
+
+    push @report, 'Exposure' if $i->{Eev};
+    push @report, 'Colour balance' if $i->{Er} or $i->{Eb};
+    push @report, 'Response curve' if $i->{Ra} or $i->{Rb} or $i->{Rc} or $i->{Rd} or $i->{Re};
+    push @report, 'Vignetting' if $i->{Va} or $i->{Vb} or $i->{Vc} or $i->{Vd};
+    push @report, 'Vignetting centre' if $i->{Vx} or $i->{Vy};
 
     [[('Optimise parameters', (join ',', @report))]];
 }

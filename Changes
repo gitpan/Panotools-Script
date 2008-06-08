@@ -1,5 +1,15 @@
 Revision history for Panotools::Script.
 
+0.14
+    - match-n-shift uses PTmender instead of nona/ImageMagick (now much slower)
+    - new tool ptograph to visualise connections within a project
+    - remove dependency on Math::Matrix
+    - rationalise mixed licenses, now GPLv2+
+    - support optimising photometric parameters for vig_optimize
+    - ptosort for renumbering control points in spatial order
+    - Fix nona-mask to allow -o parameter anywhere, use -i parameter sanely (Felix Hagemann)
+    - enblend-svg, fix mask output (Serge Droz)
+
 0.13
     - new match-n-shift control point finder tool
     - fix crash in ptoinfo

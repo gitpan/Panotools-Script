@@ -23,7 +23,6 @@ Optional stitching modes are described by an 'm' line
                    See <http://www.fh-furtwangen.de/~dersch/gamma/gamma.html>
                 This is especially useful in conjunction with the vignetting correction
                 by division
- 
 
   i2           Set interpolator, See <http://www.fh-furtwangen.de/~dersch/interpolator/interpolator.html>
                  one of:

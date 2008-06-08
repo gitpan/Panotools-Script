@@ -41,18 +41,18 @@ Panorama parameters are described by a 'p' line
                    JPEG          Panoramic image in jpeg-format.
                 some more supported file formats (mostly only 8 bit support)
                    PNM, PGM, BMP, SUN, VIFF
- 
+
                Special options for TIFF output:
                n"TIFF c:NONE"
                    c - select TIFF compression, possible options: NONE, LZW, DEFLATE
- 
+
                Special options for TIFF_m and TIFF_multilayer output:
                n"TIFF c:NONE r:CROP"
                    c - TIFF compression, possible options NONE, LZW, DEFLATE
                    r - output only used image area (cropped output). The crop offsets
                        are stored in the POSITIONX and POSITONY tiff tags
                    p1 - save coordinate images (useful for further programs, like vignetting correction)
- 
+
                Special options for JPEG output:
                n"JPEG q95"
                    q - jpeg quality

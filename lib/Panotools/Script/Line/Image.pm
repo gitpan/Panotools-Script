@@ -3,7 +3,7 @@ package Panotools::Script::Line::Image;
 use strict;
 use warnings;
 use Panotools::Script::Line;
-use Panotools::Matrix qw(matrix2rollpitchyaw rollpitchyaw2matrix);
+use Panotools::Matrix qw(matrix2rollpitchyaw rollpitchyaw2matrix multiply);
 use Math::Trig;
 
 use vars qw /@ISA/;
@@ -44,7 +44,7 @@ Basically the same format as an 'o' line.
                    of the line scanner relative to the film transport
                    g - horizontal shear
                    t - vertical shear
- 
+
   Eev          exposure of image in EV (exposure values)
   Er           white balance factor for red channel
   Eb           white balance factor for blue channel
@@ -63,7 +63,7 @@ Basically the same format as an 'o' line.
                         This mode is recommended for use with linear data.
                         If the input data is gamma corrected, try adding g2.2
                         to the m line.
- 
+
                        default is additive correction: i_new = i + corr
 
                      Both radial and flatfield correction can be combined with the
@@ -74,19 +74,19 @@ Basically the same format as an 'o' line.
                                   The coefficients j,k,l,o must be specified.
                             i6 - flatfield correction by division.
                                   The flatfield image should be specified with the p option
- 
+
   Va,Vb,Vc,Vd  vignetting correction coefficients. (defaults: 0,0,0,0)
                 ( 0, 2, 4, 6 order polynomial coefficients):
                  corr = ( i + j*r^2 + k*r^4 + l*r^6), where r is the distance from the image center
                The corrected pixel value is calculated with: i_new = i_old + corr
                if additive correction is used (default)
  			   for proportional correction (h5): i_new = i_old / corr;
- 
+
   Vx,Vy        radial vignetting correction offset in pixels (defaults q0 w0, optional).
                   Used to correct for offset from center of image
                    Vx - horizontal offset
                    Vy - vertical offset
- 
+
   S100,600,100,800   Selection(l,r,t,b), Only pixels inside the rectangle will be used for conversion.
                         Original image size is used for all image parameters
                         (e.g. field-of-view) refer to the original image.
@@ -157,7 +157,7 @@ sub Transform
     my $transform_matrix = rollpitchyaw2matrix (@transform_rpy);
     my @rpy = map (deg2rad ($_), ($self->{r}, $self->{p}, $self->{y}));
     my $matrix = rollpitchyaw2matrix (@rpy);
-    my $result = $transform_matrix->multiply ($matrix);
+    my $result = multiply ($transform_matrix, $matrix);
     my ($r, $p, $y) = map (rad2deg ($_), matrix2rollpitchyaw ($result));
     $self->{r} = $r;
     $self->{p} = $p;
