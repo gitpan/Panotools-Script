@@ -26,3 +26,22 @@ my $tempfile = File::Spec->catfile ($tempdir, '012.txt');
 ok ($p->Write ($tempfile), "script written to $tempfile");
 }
 
+is (scalar @{$p->Control}, 41, '41 control points');
+
+my $dupes = $p->Duplicates;
+is (scalar @{$dupes}, 1, '1 duplicate control point removed');
+is (scalar @{$p->Control}, 40, '40 control points remaining');
+
+my $a = $p->Subset (1,2,3);
+my $b = $p->Subset (0,1,3,4);
+
+is (scalar @{$a->Image}, 3, 'split 3 images');
+is (scalar @{$a->Control}, 19, '19 control points with 3 images');
+
+is (scalar @{$b->Image}, 4, 'split 4 images');
+is (scalar @{$b->Control}, 21, '21 control points with 4 images');
+
+$a->Merge ($b);
+is (scalar @{$a->Image}, 5, 'merged 5 images');
+is (scalar @{$a->Control}, 40, 'merged 40 control points');
+

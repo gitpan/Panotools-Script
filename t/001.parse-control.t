@@ -22,3 +22,6 @@ like ($control->Assemble, '/ N1/', 'second image is 1 written as N1');
 like ($control->Assemble, '/ X239.52/', 'second image x position written as X239.52');
 unlike ($control->Assemble, '/ p3/', 'bogus p3 parameter didn\'t survive');
 
+is ($control->Packed, '0,1066,844,1,239,804,0', 'packed ok');
+$control->Parse ("c N0 n1 X1066.5 Y844.333 x239.52 y804.64 t0");
+is ($control->Packed, '0,1066,844,1,239,804,0', 'reverse order packed the same');

@@ -10,11 +10,11 @@ Read, write and manipulate hugin script files.
 
 =head1 DESCRIPTION
 
-Panorama Tools script files are used by several tools, including PTStitcher,
-PTOptimizer, autooptimiser, nona and PTmender.
+Library and utilities for manipulating project files created by the hugin photo
+stitching software.
 
-There are GUI tools to help create them: hugin, PTGui, PTAssembler,
-autopano-sift and PTMac.
+This file format is shared with various other tools, in particular this module
+is also capable of working with Panorama Tools script files.
 
 =cut
 
@@ -36,7 +36,7 @@ use File::Spec;
 
 use Storable qw/ dclone /;
 
-our $VERSION = 0.14;
+our $VERSION = 0.15;
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -256,6 +256,7 @@ sub Output
 sub Control
 {
     my $self = shift;
+    $self->{control} = shift if scalar @_;
     $self->{control};
 }
 
@@ -331,6 +332,192 @@ sub Image2Output
             }
         }
     }
+}
+
+=pod
+
+Remove duplicate control points from the project, returns a list of deleted
+points:
+
+  my $deleted = $p->Duplicates;
+
+=cut
+
+sub Duplicates
+{
+    my $self = shift;
+    my $packed_seen = {};
+    my $points_uniq = [];
+    my $points_deleted = [];
+    for my $point (@{$self->Control})
+    {
+        my $packed = $point->Packed;
+        if (defined $packed_seen->{$packed})
+        {   
+            push @{$points_deleted}, $point;
+        }
+        else
+        {   
+            push @{$points_uniq}, $point;
+        }
+        $packed_seen->{$packed} = 'TRUE';
+    }
+
+    $self->Control ($points_uniq);
+    return $points_deleted;
+}
+
+=pod
+
+Extract a new object consisting of just the requested images, related
+control points and optimisation settings:
+
+  my $subset = $p->Subset (1, 2, 34, 56);
+
+Images can be requested in any order, but they will be returned in the same
+order as the 'parent' project.
+
+=cut
+
+sub Subset
+{
+    my $self = shift;
+    my @selection = sort {$a <=> $b} @_;
+
+    my $mapping;
+    for my $index (0 .. scalar @selection -1)
+    {
+        return 0 unless $selection[$index] =~ /^[0-9]+$/;
+        return 0 if $selection[$index] >= scalar @{$self->{image}};
+        $mapping->{$selection[$index]} = $index;
+    }
+    return 0 unless scalar keys %{$mapping} == scalar @selection;
+
+    my $pto_out = $self->Clone;
+
+    # only use selected images
+    $pto_out->{image} = [];
+    $pto_out->{imagemetadata} = [];
+    $pto_out->{variable} = new Panotools::Script::Line::Variable;
+
+    for my $index (0 .. scalar @{$self->{image}} -1)
+    {
+        next unless defined $mapping->{$index};
+
+        # copy metadata for selected image
+        $pto_out->{imagemetadata}->[$mapping->{$index}]
+            = $self->{imagemetadata}->[$index]->Clone;
+
+        # copy selected image but resolve '=0' style references
+        my $image = $self->{image}->[$index]->Clone;
+        for my $key (keys %{$image})
+        {
+            # resolve references as anchor image may be gone
+            if ($image->{$key} =~ /^=([0-9]+)$/)
+            {
+                $image->{$key} = $self->{image}->[$1]->{$key};
+            }
+            # rereference to image 0 if possible
+            if (scalar @{$pto_out->{image}} > 0
+                  and $image->{$key} eq $pto_out->{image}->[0]->{$key}
+                  and $key =~ /^([abcdev]|R[abcde]|V[abcdxy])$/)
+            {
+                $image->{$key} = '=0';
+            }
+        }
+        $pto_out->{image}->[$mapping->{$index}] = $image;
+
+        # copy only optimisation parameters for selected image
+        $pto_out->{variable}->{$mapping->{$index}}
+            = {%{$self->{variable}->{$index}}};
+    }
+
+    # copy only control points related to selected images
+    $pto_out->{control} = [];
+    for my $control (@{$self->{control}})
+    {
+        next unless defined $mapping->{$control->{n}};
+        next unless defined $mapping->{$control->{N}};
+        my $clone = $control->Clone;
+        $clone->{n} = $mapping->{$control->{n}};
+        $clone->{N} = $mapping->{$control->{N}};
+        push @{$pto_out->{control}}, $clone;
+    }
+
+    return $pto_out;
+}
+
+=pod
+
+Merge a project with another:
+
+  $p->Merge ($newstuff);
+
+This adds extra images from $newstuff, skipping duplicates.  All control points
+except exact duplicates are imported regardless.
+
+=cut
+
+sub Merge
+{
+    my $self = shift;
+    my $b = shift || return 0;
+
+    # create lookup table relating filenames to index in final project
+    my $mapping = {};
+
+    for my $index (0 .. scalar @{$self->Image} -1)
+    {
+        $mapping->{$self->Image->[$index]->{n}} = $index;
+    }
+
+    my $index = scalar keys %{$mapping};
+    for my $image (@{$b->Image})
+    {
+        unless (defined $mapping->{$image->{n}})
+        {
+            $mapping->{$image->{n}} = $index;
+            $index++;
+        }
+    }
+
+    # insert metadata, image and variable info if a new filename
+    for my $index (0 .. scalar @{$b->Image} -1)
+    {
+        my $filename = $b->Image->[$index]->{n};
+        next if defined $self->Image->[$mapping->{$filename}];
+
+        my $metadata = $b->ImageMetadata->[$index]->Clone;
+        $self->ImageMetadata->[$mapping->{$filename}] = $metadata;
+
+        my $image = $b->Image->[$index]->Clone;
+        for my $key (keys %{$image})
+        {
+            # update references
+            if ($image->{$key} =~ /^=([0-9]+)$/)
+            {
+                my $index_new = $mapping->{$b->Image->[$1]->{n}};
+                $image->{$key} = "=$index_new";
+            }
+        }
+        $self->Image->[$mapping->{$filename}] = $image;
+
+        my $variable = $b->Variable->Clone;
+        $self->Variable->{$mapping->{$filename}} = $variable->{$index};
+    }
+
+    # append control points
+    for my $control (@{$b->Control})
+    {
+        my $clone = $control->Clone;
+        $clone->{n} = $mapping->{$b->Image->[$clone->{n}]->{n}};
+        $clone->{N} = $mapping->{$b->Image->[$clone->{N}]->{n}};
+        push @{$self->Control}, $clone;
+    }
+
+    $self->Duplicates;
+
+    return 1;
 }
 
 =head1 COPYRIGHT

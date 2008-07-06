@@ -1,5 +1,13 @@
 Revision history for Panotools::Script.
 
+0.15
+    - Fix for ptograph negative coordinates (Felix Hagemann)
+    - ptosort now removes duplicate points too, Duplicates() method
+    - ptopath changes absolute to relative paths in .pto projects
+    - erect2mercator creates a pto project for generating mercator views
+    - ptosplit extracts subsets of .pto projects
+    - ptomerge merges .pto projects
+
 0.14
     - match-n-shift uses PTmender instead of nona/ImageMagick (now much slower)
     - new tool ptograph to visualise connections within a project

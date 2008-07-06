@@ -48,5 +48,33 @@ sub Identifier
     return "c";
 }
 
+=pod
+
+Get a simplified description of a control point useful for identifying
+duplicates like so:
+
+  print $point->Packed;
+
+Format is first image, x, y, second image, x, y, point type
+
+e.g: 2,123,456,3,234,567,0
+
+=cut
+
+sub Packed
+{
+    my $self = shift;
+    if ($self->{n} < $self->{N})
+    {
+        return join ',', $self->{n}, int ($self->{x}), int ($self->{y}),
+                         $self->{N}, int ($self->{X}), int ($self->{Y}), $self->{t};
+    }
+    else
+    {
+        return join ',', $self->{N}, int ($self->{X}), int ($self->{Y}),
+                         $self->{n}, int ($self->{x}), int ($self->{y}), $self->{t};
+    }
+}
+
 1;
 

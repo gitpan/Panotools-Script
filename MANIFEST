@@ -3,6 +3,7 @@ bin/enblend-mask
 bin/enblend-svg
 bin/enblend-svg-gui
 bin/erect2cubic
+bin/erect2mercator
 bin/erect2planet
 bin/erect2qtvr
 bin/erect2qtvr-gui
@@ -16,7 +17,10 @@ bin/pto2tiff
 bin/ptograph
 bin/ptoinfo
 bin/ptoinfo-gui
+bin/ptomerge
+bin/ptopath
 bin/ptosort
+bin/ptosplit
 bin/qtvr2erect
 bin/qtvr2erect-gui
 bin/tif2svg

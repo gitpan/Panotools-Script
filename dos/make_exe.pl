@@ -10,6 +10,7 @@ cubic2erect
 enblend-mask
 enblend-svg
 erect2cubic
+erect2mercator
 erect2planet
 erect2qtvr
 jpeg2qtvr
@@ -18,9 +19,12 @@ nona-mask
 process-masks
 pto2fulla
 pto2tiff
+ptomerge
 ptograph
 ptoinfo
+ptopath
 ptosort
+ptosplit
 qtvr2erect
 tif2svg
 transform-pano/;

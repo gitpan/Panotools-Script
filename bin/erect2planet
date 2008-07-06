@@ -45,7 +45,8 @@ erect2planet - Extract a stereographic 'little planet' from an equirectangular i
 
 Generates a suitably sized stereographic .pto project from a 360 degree
 equirectangular image.  Input is in any image format understood by hugin,
-output is in TIFF format with a field of view of 270 degrees.
+output is in square TIFF format with a field of view of 253.7398 degrees (this
+places the horizon halfway between the centre and the edge).
 
 The output filename is derived automatically from the input filename with
 '-sgraphic.pto' appended.  Existing .pto files will not be clobbered but
