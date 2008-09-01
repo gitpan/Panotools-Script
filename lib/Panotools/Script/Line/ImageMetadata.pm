@@ -27,9 +27,16 @@ sub Assemble
     my @tokens;
     for my $entry (sort keys %{$self})
     {
-        push @tokens, $entry .'='. $self->{$entry};
+        if ($entry eq "disabled")
+	{
+	    push @tokens, $entry;
+	}
+	else
+	{
+	    push @tokens, $entry .'='. $self->{$entry};
+	}
     }
-    return (join ' ', ($self->Identifier, @tokens)) ."\n" if (@tokens);
+    return (join ' ', ($self->Identifier, @tokens)) ."\n";
 }
 
 sub _defaults
@@ -37,7 +44,7 @@ sub _defaults
     my $self = shift;
 }
 
-sub _valid { return '^([[:alnum:]]+)=(.*)' }
+sub _valid { return '^([^=]+)(?:=(.*)|)$' }
 
 sub Identifier
 {
@@ -51,7 +58,7 @@ sub _sanitise
     my $valid = $self->_valid;
     for my $key (keys %{$self})
     {
-        delete $self->{$key} unless (grep /$valid/, "$key=");
+        delete $self->{$key} unless ( grep /$valid/, "$key=" || grep /$valid/, "$key" );
     }
 }
 
@@ -61,9 +68,16 @@ sub Report
     my @report;
     for my $entry (sort keys %{$self})
     {
-        my @tokens = $entry =~ /(^[a-z]+|[A-Z][a-z]+|[A-Z][A-Z]+(?=[A-Z][a-z]))/g;
-        my $name = join ' ', @tokens;
-        push @report, [$name, $self->{$entry}] unless ($self->{$entry} =~ /false/i);
+	if ($entry eq "disabled")
+	{
+	    push @report, ["State",$entry];
+	}
+	else
+	{
+	    my @tokens = $entry =~ /(^[a-z]+|[A-Z][a-z]+|[A-Z][A-Z]+(?=[A-Z][a-z]))/g;
+	    my $name = join ' ', @tokens;
+	    push @report, [$name, $self->{$entry}] unless ($self->{$entry} =~ /false/i);
+	}
     }
     [@report];
 }

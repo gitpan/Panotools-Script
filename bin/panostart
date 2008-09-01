@@ -1,0 +1,209 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use Image::ExifTool;
+use Getopt::Long;
+use Pod::Usage;
+
+my $path_makefile;
+my $d_inc = 15;
+my $projection;
+my $deg_fov;
+my $crop_s;
+my $help = 0;
+
+GetOptions ('o|output=s' => \$path_makefile,
+            's|seconds=s' => \$d_inc,
+            'f|projection=i' => \$projection,
+            'v|fov=s' => \$deg_fov,
+            'k|selection=s' => \$crop_s,
+            'h|help' => \$help);
+
+pod2usage (-verbose => 2) if $help;
+pod2usage (2) unless (defined $path_makefile and scalar @ARGV > 1);
+
+my $groups = [];
+
+my $group_tmp = [];
+my $previous_time;
+my $previous_inc = 0;
+for my $path_photo (@ARGV)
+{
+    my $exif_info = Image::ExifTool::ImageInfo ($path_photo);
+    my $time_unix = Image::ExifTool::GetUnixTime ($exif_info->{'DateTimeOriginal'});
+    $previous_time = $time_unix unless (defined $previous_time);
+    my $inc = $time_unix - $previous_time;
+
+    if (($inc - $previous_inc) > $d_inc)
+    {
+        push (@{$groups}, $group_tmp);
+        $group_tmp = [];
+    }
+    push @{$group_tmp}, $path_photo;
+
+    $previous_time = $time_unix;
+    $previous_inc = $inc;
+}
+push (@{$groups}, $group_tmp);
+
+
+my $rule_ptos = new File::Pto::Mk::Rule;
+$rule_ptos->Targets ('pto');
+my $rule_mks = new File::Pto::Mk::Rule;
+$rule_mks->Targets ('mk');
+my $rule_imgs = new File::Pto::Mk::Rule;
+$rule_imgs->Targets ('images');
+
+my @rules_pto;
+my @rules_mk;
+my @rules_img;
+for my $group (@{$groups})
+{
+    my $a = $group->[0];
+    my $b = $group->[-1];
+    $a =~ s/\.[[:alnum:]]+$//;
+    $b =~ s/\.[[:alnum:]]+$//;
+    $b =~ s/.*[\/\\]//;
+    my $stub = "$a-$b";
+
+    $rule_ptos->Prerequisites ("$stub.pto");
+    $rule_mks->Prerequisites ("$stub.pto.mk");
+    $rule_imgs->Prerequisites ("$stub");
+
+    my $rule_pto = new File::Pto::Mk::Rule;
+    $rule_pto->Targets ("$stub.pto");
+    $rule_pto->Prerequisites (@{$group});
+    $rule_pto->Command ('match-n-shift', '--stacks', '--align', '--clean',
+                            '--output', "$stub.pto");
+    $rule_pto->Command ('--projection', $projection) if defined $projection;
+    $rule_pto->Command ('--fov', $deg_fov) if defined $deg_fov;
+    $rule_pto->Command ('--selection', $crop_s) if defined $crop_s;
+    $rule_pto->Command (@{$group});
+
+    push @rules_pto, $rule_pto;
+
+    my $rule_mk = new File::Pto::Mk::Rule;
+    $rule_mk->Targets ("$stub.pto.mk");
+    $rule_mk->Prerequisites ("$stub.pto");
+    $rule_mk->Command ('pto2mk', '-o', "$stub.pto.mk", '-p', $stub, "$stub.pto");
+
+    push @rules_mk, $rule_mk;
+
+    my $rule_img = new File::Pto::Mk::Rule;
+    $rule_img->Targets ("$stub");
+    $rule_img->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
+    $rule_img->Command ('make', '-e', '-f', "$stub.pto.mk", 'all', 'clean');
+
+    push @rules_img, $rule_img;
+}
+
+my $rule_all = new File::Pto::Mk::Rule;
+$rule_all->Targets ('all');
+$rule_all->Prerequisites ('images');
+
+open MAKE, ">", $path_makefile or die "cannot write-open $path_makefile";
+
+print MAKE $rule_all->Assemble;
+print MAKE $rule_ptos->Assemble;
+print MAKE $rule_mks->Assemble;
+print MAKE $rule_imgs->Assemble;
+print MAKE map {$_->Assemble} @rules_pto;
+print MAKE map {$_->Assemble} @rules_mk;
+print MAKE map {$_->Assemble} @rules_img;
+
+close MAKE;
+
+package File::Pto::Mk::Rule;
+use strict;
+use warnings;
+
+sub new
+{
+    my $class = shift;
+    $class = ref $class || $class;
+    my $self = bless {targets => [], prerequisites => [], command => []}, $class;
+    return $self;
+}
+
+sub Assemble
+{
+    my $self = shift;
+    return 0 unless scalar @{$self->{targets}};
+
+    my $text;
+    $text .= join ' ', (map { _quoteshell ($_)} @{$self->{targets}});
+    $text .= ' : ';
+    $text .= join ' ', (map { _quoteshell ($_)} @{$self->{prerequisites}});
+    $text .= "\n\t" if scalar @{$self->{command}};
+    $text .= join ' ', (map { _quoteshell ($_)} @{$self->{command}});
+    $text .= "\n\n";
+    return $text;
+}
+
+sub Targets
+{
+    my $self = shift;
+    push @{$self->{targets}}, @_;
+}
+
+sub Prerequisites
+{
+    my $self = shift;
+    push @{$self->{prerequisites}}, @_;
+}
+
+sub Command
+{
+    my $self = shift;
+    push @{$self->{command}}, @_;
+}
+
+sub _quoteshell
+{
+    my $string = shift;
+    $string =~ s/(['"\[\] `&*()+~#:<?>|])/\\$1/g;
+    return $string;
+}
+
+__END__
+
+=head1 NAME
+
+panostart - identify likely panorama sequences
+
+=head1 SYNOPSIS
+
+panostart [options] --output Makefile image1 image2 [...]
+
+ Options:
+  -o | --output name    Filename of created Makefile
+  -s | --seconds        Number of seconds between panoramas
+  -f | --projection     Panotools style input projection number. Use
+                          0 for rectilinear, 2 for circular fisheye and
+                          3 for full-frame fisheye images.
+  -v | --fov            Horizontal field of view in degrees
+  -k | --selection      Crop selection boundary, eg -459,2459,-57,2861
+  -h | --help           Outputs help documentation.
+
+=head1 DESCRIPTION
+
+B<panostart> takes a list of image files and creates a Makefile
+containing rules to generate panoramas from the images.
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+=head1 SEE ALSO
+
+L<http://hugin.sourceforge.net/>
+
+=head1 AUTHOR
+
+Bruno Postle - August 2008.
+
+=cut

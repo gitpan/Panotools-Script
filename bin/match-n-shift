@@ -6,6 +6,7 @@ use File::Spec;
 use Getopt::Long;
 use Pod::Usage;
 use Image::Size;
+use Image::ExifTool;
 use Math::Trig;
 use Panotools::Script;
 use File::Temp qw/tempdir/;
@@ -16,6 +17,7 @@ my $points = 10;
 my $noransac = 0;
 my $matchpoint = 0;
 my $refine = 0;
+my $dostacks = 0;
 my $projection = 0;
 my $deg_fov = 50;
 my $crop_s = undef;
@@ -29,6 +31,7 @@ GetOptions ('o|output=s' => \$path_oto,
             'n|noransac' => \$noransac,
             'm|matchpoint' => \$matchpoint,
             'r|refine' => \$refine,
+            'b|stacks' => \$dostacks,
             'f|projection=i' => \$projection,
             'v|fov=s' => \$deg_fov,
             'k|selection=s' => \$crop_s,
@@ -36,6 +39,8 @@ GetOptions ('o|output=s' => \$path_oto,
             'c|clean' => \$clean,
             'h|help' => \$help);
 
+# code assumes images are sorted
+@ARGV = sort @ARGV;
 my @paths_input = @ARGV;
 
 pod2usage (-verbose => 2) if $help;
@@ -51,7 +56,80 @@ my @refine = (); @refine = ('--refine', '--keep-unrefinable', 0) if $refine;
 my @paths_output = ();
 
 my $tempdir = tempdir (CLEANUP => $clean);
-print STDOUT "using $tempdir\n";
+print STDERR "using $tempdir\n";
+
+
+# try and so something sane with bracketed stacks
+my $index_stack = 0;
+if ($dostacks)
+{
+    my @photos = map (File::Spec->rel2abs ($_), @ARGV);
+
+    my $speeds = {};
+    for my $path_photo (@photos)
+    {
+        my $exif_info = Image::ExifTool::ImageInfo ($path_photo, 'ExposureTime', 'ShutterSpeed');
+        my $et = $exif_info->{ExposureTime} || $exif_info->{ShutterSpeed};
+        $speeds->{$et} = 'TRUE';
+    }
+
+    my $brackets = scalar keys (%{$speeds});
+    print STDERR "$brackets shutter speeds found.\n";
+    if (scalar (@photos) % $brackets)
+    {
+        print STDERR "Can't align stacks, number of images not divisible by $brackets\n";
+        $dostacks = 0;
+    }
+
+    if ($brackets < 2)
+    {
+        print STDERR "Can't align stacks, no exposure bracketing detected.\n";
+        $dostacks = 0;
+    }
+
+    if ($dostacks)
+    {
+
+    my $longest;
+    for my $et (keys %{$speeds})
+    {
+        $et =~ s/1\///;
+        $longest = $et unless defined $longest;
+        $longest = $et if $et < $longest;
+    }
+
+    print STDERR "Longest exposure: $longest\n";
+
+    my $bases;
+    for my $path_photo (@photos)
+    {
+        my $exif_info = Image::ExifTool::ImageInfo ($path_photo, 'ExposureTime', 'ShutterSpeed');
+        my $et = $exif_info->{ExposureTime} || $exif_info->{ShutterSpeed};
+        push @{$bases}, $path_photo if $et eq "1/$longest";
+    }
+
+    my $stacks;
+    while (@photos)
+    {
+        my @stack;
+        push @stack, shift @photos for (1 .. $brackets);
+        push @{$stacks}, [@stack];
+    }
+
+    for my $stack (@{$stacks})
+    {
+        my @projection = ();
+        @projection = ('-e') if ($projection == 2 or $projection == 3);
+        system ('align_image_stack', @projection, '-f', $deg_fov,
+                    '-p', File::Spec->catfile ($tempdir, "stack_$index_stack.pto"), @{$stack});
+        $index_stack++;
+    }
+
+    @paths_input = @{$bases};
+
+    }
+}
+
 
 my $index = 0;
 
@@ -89,7 +167,7 @@ for my $path_input (@paths_input)
     my $path_output_small = File::Spec->catfile ($tempdir, "sgraph_$index.tif");
 
     system ('PTmender', '-o', $path_output_small, $path_pto_temp);
-    print STDOUT "Created $path_output_small\n";
+    print STDERR "Created $path_output_small\n";
     $index++;
     push @paths_output, $path_output_small;
 }
@@ -182,19 +260,61 @@ for my $point (@{$oto->Control})
      $point->{Y} *= $N_scale_h;
 }
 
-# fix image lines
+# revert to original image filenames
 $index = 0;
 for my $image (@{$oto->Image})
 {
     $image->{n} = '"'. $paths_input[$index] .'"';
-    ($image->{w}, $image->{h}) = imgsize (File::Spec->rel2abs ($paths_input[$index]));
+    $index++;
+}
+
+# merge stacks
+if ($dostacks)
+{
+    my $tempfile = File::Spec->catfile ($tempdir, 'bases.oto');
+    $oto->Write ($tempfile);
+
+    my @ptos = ($tempfile);
+
+    for my $i (0 .. $index_stack -1)
+    {
+        push @ptos, File::Spec->catfile ($tempdir, "stack_$i.pto");
+    }
+
+    my $temp_merged = File::Spec->catfile ($tempdir, 'merged.oto');
+    system ('ptomerge', @ptos, $temp_merged);
+    my $temp_sorted = File::Spec->catfile ($tempdir, 'sorted.oto');
+    system ('ptosort', '--image', 'n', $temp_merged, $temp_sorted);
+    $oto->Read ($temp_sorted);
+    $oto->Option->{outputLDRBlended} = 'false';
+    $oto->Option->{outputLDRExposureBlended} = 'true';
+}
+
+$index = 0;
+for my $image (@{$oto->Image})
+{
+    ($image->{w}, $image->{h}) = imgsize (File::Spec->rel2abs ($ARGV[$index]));
     $image->{S} = $crop_s if defined $crop_s;
     # link all lens parameters
     $image->Set (v => '=0', d => '=0', e => '=0',
+        a => '=0', b => '=0', c => '=0', g => '=0', t => '=0',
         Ra => '=0', Rb => '=0', Rc => '=0', Rd => '=0', Re => '=0',
         Va => '=0', Vb => '=0', Vc => '=0', Vd => '=0', Vx => '=0', Vy => '=0')
             if ($index > 0);
+    $image->Set (v => $deg_fov, d => 0, e => 0,
+        a => 0, b => 0, c => 0, g => 0, t => 0,
+        Ra => 0, Rb => 0, Rc => 0, Rd => 0, Re => 0,
+        Va => 1, Vb => 0, Vc => 0, Vd => 0, Vx => 0, Vy => 0)
+            if ($index == 0);
+    $image->Set (f => $projection);
     $index++;
+}
+
+for my $index_meta (0 .. scalar @{$oto->Image} -1)
+{
+    $oto->ImageMetadata->[$index_meta] = new Panotools::Script::Line::ImageMetadata;
+    $oto->ImageMetadata->[$index_meta]->{cropFactor} = 1;
+    $oto->ImageMetadata->[$index_meta]->{autoCenterCrop} = 0 if defined $crop_s;
 }
 
 if ($align)
@@ -237,7 +357,7 @@ sub from_sgraphic
         if ($args->{projection} == 2 or $args->{projection} == 3); # fisheye
     return (($pix_dx * $b1_c1) + $pix_w2, ($pix_dy * $b1_c1) + $pix_h2)
         if ($args->{projection} == 0); # rectilinear
-    print STDOUT "Projection ". $args->{projection} ." is not azimuthal!\n";
+    print STDERR "Projection ". $args->{projection} ." is not azimuthal!\n";
     return ($args->{pix_x}, $args->{pix_y});
 }
 
@@ -294,6 +414,7 @@ match-n-shift [options] --output project.pto image1 image2 [...]
                           is generatekeys from autopano-sift-C
   -r | --refine         Refine the found control points using the
                           original images, delete unrefinable.
+  -b | --stacks         Use align_image_stack with bracketed stacks
   -f | --projection     Panotools style input projection number. Use
                           0 for rectilinear, 2 for circular fisheye and
                           3 for full-frame fisheye images.
@@ -313,6 +434,12 @@ and identifying control points, then takes the generated .oto file and rewrites
 the control point coordinates assuming that they are based on stereographic
 versions of the input photos, the resulting .oto file should be applicable to
 the original photos.
+
+Additionally if the --stacks option is used then align_image_stack is used to
+assemble bracketed sequences within the set, usually with less error.  For this
+to work photos need to be taken with the camera's auto-bracketing feature, e.g.
+take three different exposures, move camera, take the same three exposures,
+move camera etc...
 
 =head1 LICENSE
 

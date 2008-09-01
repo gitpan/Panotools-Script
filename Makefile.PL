@@ -9,10 +9,10 @@ WriteMakefile(
         'bin/tif2svg', 'bin/enblend-svg', 'bin/pto2fulla', 'bin/ptoinfo', 'bin/ptopath',
         'bin/qtvr2erect-gui', 'bin/tif2svg-gui', 'bin/ptoinfo-gui', 'bin/ptosort',
         'bin/process-masks-gui', 'bin/enblend-svg-gui', 'bin/erect2qtvr-gui',
-        'bin/erect2mercator', 'bin/ptosplit', 'bin/ptomerge',
+        'bin/erect2mercator', 'bin/ptosplit', 'bin/ptomerge', 'bin/panostart',
         'bin/transform-pano', 'bin/nona-mask', 'bin/qtvr2erect' ],
     'VERSION_FROM'      => 'lib/Panotools/Script.pm', # finds $VERSION
-    'PREREQ_PM'         => {'bytes' => 0.0, 'File::Copy' => 1.0,
+    'PREREQ_PM'         => {'bytes' => 0.0, 'File::Copy' => 1.0, 'Image::ExifTool' => 6.0,
         'Getopt::Long' => 2.0, 'Pod::Usage' => 1.0, 'GraphViz' => 1.0,
         'Test::More' => 0.1, 'Math::Trig' => 0.1, 'File::Temp' => 0.1,
         'File::Spec' => 0.8, 'Image::Size' => 2.9, 'Storable' => 2.0},

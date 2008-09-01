@@ -1,5 +1,12 @@
 Revision history for Panotools::Script.
 
+0.16
+    - Read() and Write() accept STDIN and STDOUT using '-' placeholder
+    - ptosort now allows sorting many aspects of .pto projects (Felix Hagemann)
+    - Preserve 'disabled' flag for images (Felix Hagemann)
+    - match-n-shift --stacks option to use align_image_stack
+    - panostart does everything
+
 0.15
     - Fix for ptograph negative coordinates (Felix Hagemann)
     - ptosort now removes duplicate points too, Duplicates() method

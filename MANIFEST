@@ -10,6 +10,7 @@ bin/erect2qtvr-gui
 bin/jpeg2qtvr
 bin/match-n-shift
 bin/nona-mask
+bin/panostart
 bin/process-masks
 bin/process-masks-gui
 bin/pto2fulla

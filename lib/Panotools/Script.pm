@@ -36,7 +36,7 @@ use File::Spec;
 
 use Storable qw/ dclone /;
 
-our $VERSION = 0.15;
+our $VERSION = 0.16;
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -79,8 +79,16 @@ sub _defaults
 sub Read
 {
     my $self = shift;
+    $self->_defaults;
     my $path = shift || return 0;
-    open FILE, "<", $path or die "cannot read-open $path";
+    if ($path eq '-')
+    {
+        open FILE, '<-';
+    }
+    else
+    {
+        open FILE, "<", $path or die "cannot read-open $path";
+    }
     my @raw = <FILE>;
     close FILE;
 
@@ -146,7 +154,14 @@ sub Write
     my $self = shift;
     my $path = shift || return 0;
     my $vector = shift || '';
-    open FILE, ">", $path or die "cannot write-open $path";
+    if ($path eq '-')
+    {
+        open FILE, '>-';
+    }
+    else
+    {
+        open FILE, ">", $path or die "cannot write-open $path";
+    }
     print FILE "# Created by ". (ref $self) ." $VERSION\n\n";
     print FILE $self->Panorama->Assemble;
     print FILE $self->Mode->Assemble;
