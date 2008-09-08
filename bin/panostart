@@ -12,12 +12,14 @@ my $projection;
 my $deg_fov;
 my $crop_s;
 my $help = 0;
+my $verbose = 0;
 
 GetOptions ('o|output=s' => \$path_makefile,
             's|seconds=s' => \$d_inc,
             'f|projection=i' => \$projection,
             'v|fov=s' => \$deg_fov,
             'k|selection=s' => \$crop_s,
+            'l|loquacious' => \$verbose,
             'h|help' => \$help);
 
 pod2usage (-verbose => 2) if $help;
@@ -31,7 +33,9 @@ my $previous_inc = 0;
 for my $path_photo (@ARGV)
 {
     my $exif_info = Image::ExifTool::ImageInfo ($path_photo);
-    my $time_unix = Image::ExifTool::GetUnixTime ($exif_info->{'DateTimeOriginal'});
+    my $datetime = $exif_info->{'FileModificationDateTime'};
+    $datetime = $exif_info->{'DateTimeOriginal'} if (defined $exif_info->{'DateTimeOriginal'});
+    my $time_unix = Image::ExifTool::GetUnixTime ($datetime);
     $previous_time = $time_unix unless (defined $previous_time);
     my $inc = $time_unix - $previous_time;
 
@@ -57,9 +61,14 @@ $rule_imgs->Targets ('images');
 
 my @rules_pto;
 my @rules_mk;
-my @rules_img;
+my @rules_ldr_blended;
+my @rules_ldr_stacked_blended;
+my @rules_hdr_blended;
+
 for my $group (@{$groups})
 {
+    next if scalar @{$group} == 1;
+
     my $a = $group->[0];
     my $b = $group->[-1];
     $a =~ s/\.[[:alnum:]]+$//;
@@ -69,7 +78,19 @@ for my $group (@{$groups})
 
     $rule_ptos->Prerequisites ("$stub.pto");
     $rule_mks->Prerequisites ("$stub.pto.mk");
-    $rule_imgs->Prerequisites ("$stub");
+
+    my $path_img;
+    if (is_stacks (@{$group}))
+    {
+        $path_img = $stub ."_fused.tif";
+    }
+    else
+    {
+        $path_img = $stub .".tif";
+    }
+    $rule_imgs->Prerequisites ($path_img);
+
+    print STDERR "$path_img: ". scalar @{$group} ." images\n" if $verbose;
 
     my $rule_pto = new File::Pto::Mk::Rule;
     $rule_pto->Targets ("$stub.pto");
@@ -90,29 +111,66 @@ for my $group (@{$groups})
 
     push @rules_mk, $rule_mk;
 
-    my $rule_img = new File::Pto::Mk::Rule;
-    $rule_img->Targets ("$stub");
-    $rule_img->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
-    $rule_img->Command ('make', '-e', '-f', "$stub.pto.mk", 'all', 'clean');
+    my $rule_ldr_blended = new File::Pto::Mk::Rule;
+    $rule_ldr_blended->Targets ($stub .".tif");
+    $rule_ldr_blended->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
+    $rule_ldr_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub .".tif", 'clean');
 
-    push @rules_img, $rule_img;
+    push @rules_ldr_blended, $rule_ldr_blended;
+
+    my $rule_ldr_stacked_blended = new File::Pto::Mk::Rule;
+    $rule_ldr_stacked_blended->Targets ($stub ."_fused.tif");
+    $rule_ldr_stacked_blended->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
+    $rule_ldr_stacked_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub ."_fused.tif", 'clean');
+
+    push @rules_ldr_stacked_blended, $rule_ldr_stacked_blended;
+
+    my $rule_hdr_blended = new File::Pto::Mk::Rule;
+    $rule_hdr_blended->Targets ($stub ."_hdr.exr");
+    $rule_hdr_blended->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
+    $rule_hdr_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub ."_hdr.exr", 'clean');
+
+    push @rules_hdr_blended, $rule_hdr_blended;
 }
 
 my $rule_all = new File::Pto::Mk::Rule;
 $rule_all->Targets ('all');
 $rule_all->Prerequisites ('images');
 
+my $rule_phony = new File::Pto::Mk::Rule;
+$rule_phony->Targets ('.PHONY');
+$rule_phony->Prerequisites (qw/all images pto mk/);
+
 open MAKE, ">", $path_makefile or die "cannot write-open $path_makefile";
 
+print MAKE $rule_phony->Assemble;
 print MAKE $rule_all->Assemble;
 print MAKE $rule_ptos->Assemble;
 print MAKE $rule_mks->Assemble;
 print MAKE $rule_imgs->Assemble;
 print MAKE map {$_->Assemble} @rules_pto;
 print MAKE map {$_->Assemble} @rules_mk;
-print MAKE map {$_->Assemble} @rules_img;
+print MAKE map {$_->Assemble} @rules_ldr_blended;
+print MAKE map {$_->Assemble} @rules_ldr_stacked_blended;
+print MAKE map {$_->Assemble} @rules_hdr_blended;
 
 close MAKE;
+
+sub is_stacks
+{
+    my $speeds = {};
+    for my $path_photo (@_)
+    {
+        my $exif_info = Image::ExifTool::ImageInfo ($path_photo, 'ExposureTime', 'ShutterSpeed');
+        my $et = $exif_info->{ExposureTime} || $exif_info->{ShutterSpeed} || 0;
+        $speeds->{$et} = 'TRUE';
+    }
+
+    my $brackets = scalar keys (%{$speeds});
+    return 0 if (scalar (@_) % $brackets);
+    return 0 if ($brackets < 2);
+    return 1;
+}
 
 package File::Pto::Mk::Rule;
 use strict;
@@ -185,6 +243,7 @@ panostart [options] --output Makefile image1 image2 [...]
   -v | --fov            Horizontal field of view in degrees
   -k | --selection      Crop selection boundary, eg -459,2459,-57,2861
   -h | --help           Outputs help documentation.
+  -l | --loquacious     Verbose output listing targets and numbers of images.
 
 =head1 DESCRIPTION
 

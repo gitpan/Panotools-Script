@@ -55,7 +55,12 @@ my @refine = (); @refine = ('--refine', '--keep-unrefinable', 0) if $refine;
 
 my @paths_output = ();
 
-my $tempdir = tempdir (CLEANUP => $clean);
+# PTmender can't write to /tmp/ if it is a separate partition, use the only
+# known writable folder for temp files.
+my ($split_vol, $split_dir, $split_file)
+    = File::Spec->splitpath (File::Spec->rel2abs ($path_oto));
+my $path_tmp = File::Spec->catpath ($split_vol, $split_dir, '');
+my $tempdir = tempdir (CLEANUP => $clean, DIR => $path_tmp);
 print STDERR "using $tempdir\n";
 
 
@@ -153,7 +158,7 @@ for my $path_input (@paths_input)
 
     my $pto = new Panotools::Script;
     $pto->Panorama->Set (v => $deg_fov, E => 0, f => $projection_panorama,
-        w => $pix_width_small, h => $pix_height_small, n => '"TIFF_m"');
+        w => $pix_width_small, h => $pix_height_small, n => '"TIFF_m c:NONE"');
     $pto->Image->[0] = new Panotools::Script::Line::Image;
     $pto->Image->[0]->Set (w => $pix_width_input, h => $pix_height_input, v => $deg_fov,
         f => $projection_temp, Eev => 0, r => 0, p => 0, y => 0, n => "\"$path_input\"");
@@ -317,15 +322,13 @@ for my $index_meta (0 .. scalar @{$oto->Image} -1)
     $oto->ImageMetadata->[$index_meta]->{autoCenterCrop} = 0 if defined $crop_s;
 }
 
+$oto->Write ($path_oto);
+
 if ($align)
 {
     my $tempfile = File::Spec->catfile ($tempdir, 'align.oto');
     $oto->Write ($tempfile);
     system ('autooptimiser', '-a', '-l', '-s', '-o', $path_oto, $tempfile);
-}
-else
-{
-    $oto->Write ($path_oto);
 }
 
 # voodoo

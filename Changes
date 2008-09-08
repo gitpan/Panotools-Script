@@ -1,5 +1,13 @@
 Revision history for Panotools::Script.
 
+0.17
+    - match-n-shift workaround PTmender failure with separate /tmp/
+    - match-n-shift write output even if no points found
+    - panostart --loquacious verbose output
+    - panostart use file date if no exif date
+    - panostart .PHONY rule
+    - panostart create rules for all output types
+
 0.16
     - Read() and Write() accept STDIN and STDOUT using '-' placeholder
     - ptosort now allows sorting many aspects of .pto projects (Felix Hagemann)
