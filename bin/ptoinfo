@@ -28,6 +28,9 @@ for my $path_pto (@ARGV)
     }
     print STDOUT "    Normal control points: ". $results->{0} ."\n" if (defined $results->{0});
     delete $results->{0};
+    my ($total, $min, $max, $average, $sigma) = $pto->Stats;
+    print STDOUT "    Average normal control point error: $average\n";
+    print STDOUT "    Maximum normal control point error: $max\n";
     print STDOUT "    Horizontal control points: ". $results->{1} ."\n" if (defined $results->{1});
     delete $results->{1};
     print STDOUT "    Vertical control points: ". $results->{2} ."\n" if (defined $results->{2});

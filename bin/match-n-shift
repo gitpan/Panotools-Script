@@ -328,7 +328,9 @@ if ($align)
 {
     my $tempfile = File::Spec->catfile ($tempdir, 'align.oto');
     $oto->Write ($tempfile);
-    system ('autooptimiser', '-a', '-l', '-s', '-o', $path_oto, $tempfile);
+    system ('autooptimiser', '-a', '-l', '-s', '-o', $tempfile, $tempfile);
+    system ('ptoclean', '-o', $tempfile, $tempfile);
+    system ('autooptimiser', '-n', '-l', '-o', $path_oto, $tempfile);
 }
 
 # voodoo

@@ -36,7 +36,7 @@ use File::Spec;
 
 use Storable qw/ dclone /;
 
-our $VERSION = 0.17;
+our $VERSION = 0.18;
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -384,6 +384,39 @@ sub Duplicates
 
 =pod
 
+Remove all points with an error distance greater than a threshold measured in
+pixels, returns a list of deleted points:
+
+  my $pruned = $p->Prune (12.345);
+
+=cut
+
+sub Prune
+{
+    my $self = shift;
+    my $threshold = shift;
+    return [] unless $threshold > 0;
+    my $points_new = [];
+    my $points_pruned = [];
+
+    for my $point (@{$self->Control})
+    {
+        if ($point->{t} > 0 or $point->Distance ($self) < $threshold)
+        {
+            push @{$points_new}, $point;
+        }
+        else
+        {
+            push @{$points_pruned}, $point;
+        }
+    }
+
+    $self->{control} = $points_new;
+    return $points_pruned;
+}
+
+=pod
+
 Extract a new object consisting of just the requested images, related
 control points and optimisation settings:
 
@@ -533,6 +566,58 @@ sub Merge
     $self->Duplicates;
 
     return 1;
+}
+
+=pod
+
+Get a summary of control point error distances in pixel units scaled to the
+output panorama:
+
+  my ($total, $min, $max, $average, $sigma) = $p->Stats;
+
+=cut
+
+sub Stats
+{
+    my $self = shift;
+
+    # get a list of all the distances
+    my @distances;
+    for my $point (@{$self->Control})
+    {
+        next unless $point->{t} == 0;
+        push @distances, $point->Distance ($self);
+    }
+
+    my $total = scalar (@distances);
+
+    return (0,0,0,0,0) unless $total;
+
+    # calculate maximum and average distance
+    my $max = undef;
+    my $min = undef;
+    my $sum = 0;
+    for my $distance (@distances)
+    {
+        $min = $distance unless defined $min;
+        $min = $distance if ($min > $distance);
+        $max = $distance unless defined $max;
+        $max = $distance if ($max < $distance);
+        $sum += $distance;
+    }
+    my $average = $sum / $total;
+
+    # calculate variation and standard deviation (sigma)
+    $sum = 0;
+    for my $distance (@distances)
+    {
+        my $variation = $distance - $average;
+        $sum += $variation * $variation;
+    }
+    my $variance = $sum / $total;
+    my $sigma = sqrt ($variance);
+
+    return ($total, $min, $max, $average, $sigma);
 }
 
 =head1 COPYRIGHT

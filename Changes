@@ -1,5 +1,18 @@
 Revision history for Panotools::Script.
 
+0.18
+    - pafextract tool for using panoglview as a pteditor replacement
+    - panostart MAKE_EXTRA_ARGS passed to make
+    - panostart rename -s parameter to -t
+    - panostart AP_EXTRA_ARGS passed to match-n-shift
+    - new Distance() method to report control point errors,
+      doesn't know about equirectangular/cylindrical input yet
+    - new Prune() and Stats() methods for working with control point errors
+    - ptoinfo reports global control point error distance
+    - new tool ptoclean control point reaper
+    - support for extra morph parameters (Iouri Ivliev)
+    - match-n-shift runs ptoclean with --align option
+
 0.17
     - match-n-shift workaround PTmender failure with separate /tmp/
     - match-n-shift write output even if no points found

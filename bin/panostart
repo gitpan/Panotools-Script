@@ -5,6 +5,7 @@ use warnings;
 use Image::ExifTool;
 use Getopt::Long;
 use Pod::Usage;
+use Panotools::Script;
 
 my $path_makefile;
 my $d_inc = 15;
@@ -14,8 +15,10 @@ my $crop_s;
 my $help = 0;
 my $verbose = 0;
 
+my @argv_save = @ARGV;
+
 GetOptions ('o|output=s' => \$path_makefile,
-            's|seconds=s' => \$d_inc,
+            't|time=s' => \$d_inc,
             'f|projection=i' => \$projection,
             'v|fov=s' => \$deg_fov,
             'k|selection=s' => \$crop_s,
@@ -95,8 +98,8 @@ for my $group (@{$groups})
     my $rule_pto = new File::Pto::Mk::Rule;
     $rule_pto->Targets ("$stub.pto");
     $rule_pto->Prerequisites (@{$group});
-    $rule_pto->Command ('match-n-shift', '--stacks', '--align', '--clean',
-                            '--output', "$stub.pto");
+    $rule_pto->Command ('match-n-shift', '--stacks', '--align',
+                            '$(AP_EXTRA_ARGS)', '--output', "$stub.pto");
     $rule_pto->Command ('--projection', $projection) if defined $projection;
     $rule_pto->Command ('--fov', $deg_fov) if defined $deg_fov;
     $rule_pto->Command ('--selection', $crop_s) if defined $crop_s;
@@ -114,21 +117,21 @@ for my $group (@{$groups})
     my $rule_ldr_blended = new File::Pto::Mk::Rule;
     $rule_ldr_blended->Targets ($stub .".tif");
     $rule_ldr_blended->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
-    $rule_ldr_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub .".tif", 'clean');
+    $rule_ldr_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub .".tif", '$(MAKE_EXTRA_ARGS)');
 
     push @rules_ldr_blended, $rule_ldr_blended;
 
     my $rule_ldr_stacked_blended = new File::Pto::Mk::Rule;
     $rule_ldr_stacked_blended->Targets ($stub ."_fused.tif");
     $rule_ldr_stacked_blended->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
-    $rule_ldr_stacked_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub ."_fused.tif", 'clean');
+    $rule_ldr_stacked_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub ."_fused.tif", '$(MAKE_EXTRA_ARGS)');
 
     push @rules_ldr_stacked_blended, $rule_ldr_stacked_blended;
 
     my $rule_hdr_blended = new File::Pto::Mk::Rule;
     $rule_hdr_blended->Targets ($stub ."_hdr.exr");
     $rule_hdr_blended->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
-    $rule_hdr_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub ."_hdr.exr", 'clean');
+    $rule_hdr_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub ."_hdr.exr", '$(MAKE_EXTRA_ARGS)');
 
     push @rules_hdr_blended, $rule_hdr_blended;
 }
@@ -143,11 +146,15 @@ $rule_phony->Prerequisites (qw/all images pto mk/);
 
 open MAKE, ">", $path_makefile or die "cannot write-open $path_makefile";
 
+print MAKE "# Created by Panotools::Script $Panotools::Script::VERSION\n";
+print MAKE "# $0 ". join (' ', @argv_save). "\n\n";
 print MAKE $rule_phony->Assemble;
 print MAKE $rule_all->Assemble;
 print MAKE $rule_ptos->Assemble;
 print MAKE $rule_mks->Assemble;
 print MAKE $rule_imgs->Assemble;
+print MAKE "MAKE_EXTRA_ARGS=clean\n";
+print MAKE "AP_EXTRA_ARGS=--clean\n\n";
 print MAKE map {$_->Assemble} @rules_pto;
 print MAKE map {$_->Assemble} @rules_mk;
 print MAKE map {$_->Assemble} @rules_ldr_blended;
@@ -220,7 +227,7 @@ sub Command
 sub _quoteshell
 {
     my $string = shift;
-    $string =~ s/(['"\[\] `&*()+~#:<?>|])/\\$1/g;
+    $string =~ s/(['"\[\] `&*+~#:<?>|])/\\$1/g;
     return $string;
 }
 
@@ -236,7 +243,7 @@ panostart [options] --output Makefile image1 image2 [...]
 
  Options:
   -o | --output name    Filename of created Makefile
-  -s | --seconds        Number of seconds between panoramas
+  -t | --time           Number of seconds between panoramas
   -f | --projection     Panotools style input projection number. Use
                           0 for rectilinear, 2 for circular fisheye and
                           3 for full-frame fisheye images.

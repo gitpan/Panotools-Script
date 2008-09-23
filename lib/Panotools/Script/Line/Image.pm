@@ -5,6 +5,7 @@ use warnings;
 use Panotools::Script::Line;
 use Panotools::Matrix qw(matrix2rollpitchyaw rollpitchyaw2matrix multiply);
 use Math::Trig;
+use Math::Trig ':radial';
 
 use vars qw /@ISA/;
 @ISA = qw /Panotools::Script::Line/;
@@ -210,6 +211,159 @@ sub Report
     [@report];
 }
 
+sub W2
+{
+    my $self = shift;
+    return ($self->{w} / 2) if ($self->{w} < $self->{h});
+    return ($self->{h} / 2);
+}
+
+sub V
+{
+    my $self = shift;
+    my $pto = shift;
+    if ($self->{v} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{v}};
+    return $self->{v};
+}
+
+sub A
+{
+    my $self = shift;
+    my $pto = shift;
+    return 0.0 unless defined ($self->{a});
+    if ($self->{a} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{a}};
+    return $self->{a};
+}
+
+sub B
+{
+    my $self = shift;
+    my $pto = shift;
+    return 0.0 unless defined ($self->{b});
+    if ($self->{b} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{b}};
+    return $self->{b};
+}
+
+sub C
+{
+    my $self = shift;
+    my $pto = shift;
+    return 0.0 unless defined ($self->{c});
+    if ($self->{c} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{c}};
+    return $self->{c};
+}
+
+sub D
+{
+    my $self = shift;
+    my $pto = shift;
+    return 0.0 unless defined ($self->{d});
+    if ($self->{d} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{d}};
+    return $self->{d};
+}
+
+sub E
+{
+    my $self = shift;
+    my $pto = shift;
+    return 0.0 unless defined ($self->{e});
+    if ($self->{e} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{e}};
+    return $self->{e};
+}
+
+# copied from libpano12 math.c inverse polynomial using Newton's method
+sub _inv_radial
+{
+    my $self = shift;
+    my $pto = shift;
+    my $dest = shift;
+    my $a = $self->A ($pto);
+    my $b = $self->B ($pto);
+    my $c = $self->C ($pto);
+    my $d = 1 - $a - $b - $c;
+
+    my $iter = 0;
+    my $MAXITER = 100;
+    my $R_EPS = 0.000001;
+
+    my $rd = (sqrt ($dest->[0] * $dest->[0] + $dest->[1] * $dest->[1])) / $self->W2;
+
+    return [0, 0] if $rd == 0;
+
+    my $rs = $rd;
+    my $f = ((($a * $rs + $b) * $rs + $c) * $rs + $d) * $rs;
+
+    while (abs ($f - $rd) > $R_EPS && $iter < $MAXITER)
+    {
+        $rs = $rs - ($f - $rd) / (((4 * $a * $rs + 3 * $b) * $rs + 2 * $c) * $rs + $d);
+        $f = ((($a * $rs + $b) * $rs + $c) * $rs + $d) * $rs;
+        $iter++;
+    }
+
+    my $scale = $rs / $rd;
+    # print "scale = $scale iter = $iter\n";
+
+    return [$dest->[0] * $scale, $dest->[1] * $scale];
+}
+
+sub _radial
+{
+    my $self = shift;
+    my $pto = shift;
+    my $dest = shift;
+    my $a = $self->A ($pto);
+    my $b = $self->B ($pto);
+    my $c = $self->C ($pto);
+    my $d = 1 - $a - $b - $c;
+
+    my $r = (sqrt ($dest->[0] * $dest->[0] + $dest->[1] * $dest->[1])) / $self->W2;
+    my $scale = (($a * $r + $b) * $r + $c) * $r + $d;
+
+    return [$dest->[0] * $scale, $dest->[1] * $scale];
+}
+
+=pod
+
+For any given coordinate in this image (top left is 0,0), calculate an x,y,z
+cartesian coordinate, accounting for lens distortion, projection and rotation.
+
+=cut
+
+sub To_Cartesian
+{
+    my $self = shift;
+    my $pto = shift;
+    my $pix = shift;
+
+    $pix->[0] = ($self->{w}/2) - $pix->[0] + $self->D ($pto);
+    $pix->[1] = ($self->{h}/2) - $pix->[1] + $self->E ($pto);
+    $pix = $self->_inv_radial ($pto, $pix);
+
+    # FIXME returns false value for cylindrical and equirectangular images
+    my $point = [[1],[0],[0]];
+
+    if ($self->{f} == 0)
+    {
+        my $rad = ($self->{w}/2) / tan (deg2rad ($self->V ($pto)) / 2);
+        $point = [[$rad], [$pix->[0]], [$pix->[1]]];
+    }
+    if ($self->{f} == 2 or $self->{f} == 3)
+    {
+        my ($rho, $theta, $z) = cartesian_to_cylindrical ($pix->[1], $pix->[0], 1);
+        my $phi = $rho * deg2rad ($self->V ($pto)) / $self->{w};
+        $rho = $z;
+
+        ($point->[2]->[0],
+         $point->[1]->[0],
+         $point->[0]->[0])
+         = spherical_to_cartesian ($rho, $theta, $phi);
+    }
+
+    my $matrix = rollpitchyaw2matrix
+                   (deg2rad ($self->{r}), deg2rad ($self->{p}), deg2rad ($self->{y}));
+
+    multiply ($matrix, $point);
+}
 
 1;
 

@@ -15,6 +15,7 @@ bin/process-masks
 bin/process-masks-gui
 bin/pto2fulla
 bin/pto2tiff
+bin/ptoclean
 bin/ptograph
 bin/ptoinfo
 bin/ptoinfo-gui
@@ -65,6 +66,8 @@ t/012.read-pto.t
 t/020.create-script.t
 t/021.morph.t
 t/031.matrix.t
+t/032.image.t
+t/033.points.t
 t/data/cemetery/dscn4905.jpg
 t/data/cemetery/dscn4906.jpg
 t/data/cemetery/dscn4907.jpg

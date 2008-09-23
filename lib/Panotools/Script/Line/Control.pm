@@ -2,6 +2,7 @@ package Panotools::Script::Line::Control;
 
 use strict;
 use warnings;
+use Math::Trig;
 use Panotools::Script::Line;
 
 use vars qw /@ISA/;
@@ -74,6 +75,65 @@ sub Packed
         return join ',', $self->{N}, int ($self->{X}), int ($self->{Y}),
                          $self->{n}, int ($self->{x}), int ($self->{y}), $self->{t};
     }
+}
+
+=pod
+
+Get a value for control point error distance (measured in pixels in the panorama
+output):
+
+  print $point->Distance ($pto);
+
+Note that it is necessary to pass a Panotools::Script object to this method.
+Note also that the values returned are approximately half those returned by
+panotools itself, go figure.
+
+=cut
+
+sub Distance
+{
+    my $self = shift;
+    my $p = shift;
+
+    my $image_N = $p->Image->[$self->{N}];
+    my $image_n = $p->Image->[$self->{n}];
+
+    my $vec_N = $image_N->To_Cartesian ($p, [$self->{X},$self->{Y}]);
+    my $vec_n = $image_n->To_Cartesian ($p, [$self->{x},$self->{y}]);
+
+    $vec_N = _normalise ($vec_N);
+    $vec_n = _normalise ($vec_n);
+
+    my $angle = acos (($vec_N->[0]->[0] * $vec_n->[0]->[0])
+                    + ($vec_N->[1]->[0] * $vec_n->[1]->[0])
+                    + ($vec_N->[2]->[0] * $vec_n->[2]->[0]));
+
+    if ($p->Panorama->{f} == 0) # special case for rectilinear output
+    {
+        my $radius = $p->Panorama->{w} / 2 / tan (deg2rad ($p->Panorama->{v}/2));
+        return $radius * $angle;
+    }
+
+    return $angle / pi() * $p->Panorama->{w} / 2;
+}
+
+sub _normalise
+{
+    my $vector = shift;
+
+    my $magnitude = _magnitude ($vector->[0]->[0], $vector->[1]->[0], $vector->[2]->[0]);
+
+    $vector->[0]->[0] = $vector->[0]->[0] / $magnitude;
+    $vector->[1]->[0] = $vector->[1]->[0] / $magnitude;
+    $vector->[2]->[0] = $vector->[2]->[0] / $magnitude;
+
+    return $vector;
+}
+
+sub _magnitude
+{
+    my ($x, $y, $z) = @_;
+    sqrt ($x*$x + $y*$y + $z*$z);
 }
 
 1;
