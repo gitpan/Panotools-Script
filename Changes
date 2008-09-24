@@ -1,5 +1,8 @@
 Revision history for Panotools::Script.
 
+0.19
+    - add pafextract to MANIFEST
+
 0.18
     - pafextract tool for using panoglview as a pteditor replacement
     - panostart MAKE_EXTRA_ARGS passed to make
