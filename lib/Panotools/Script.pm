@@ -36,7 +36,7 @@ use File::Spec;
 
 use Storable qw/ dclone /;
 
-our $VERSION = 0.19;
+our $VERSION = '0.20';
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -152,6 +152,7 @@ by supplying an optional second argument:
 sub Write
 {
     my $self = shift;
+    $self->Image2Output if scalar @{$self->Output};
     my $path = shift || return 0;
     my $vector = shift || '';
     if ($path eq '-')
@@ -535,8 +536,8 @@ sub Merge
         my $filename = $b->Image->[$index]->{n};
         next if defined $self->Image->[$mapping->{$filename}];
 
-        my $metadata = $b->ImageMetadata->[$index]->Clone;
-        $self->ImageMetadata->[$mapping->{$filename}] = $metadata;
+        $self->ImageMetadata->[$mapping->{$filename}] = $b->ImageMetadata->[$index]->Clone
+            if defined $b->ImageMetadata->[$index];
 
         my $image = $b->Image->[$index]->Clone;
         for my $key (keys %{$image})
@@ -620,6 +621,82 @@ sub Stats
     return ($total, $min, $max, $average, $sigma);
 }
 
+=pod
+
+Centre input images into the final panorama:
+
+   $p->Centre ('y');
+   $p->Centre ('p');
+   $p->Centre ('r');
+
+=cut
+
+sub Centre
+{
+    my $self = shift;
+    my $param = shift;
+
+    for my $image (@{$self->Image})
+    {
+        my $sigma_old = $self->Sigma ($param);
+        $image->{$param} += 360;
+        next if $self->Sigma ($param) < $sigma_old;
+        $image->{$param} -= 720;
+        next if $self->Sigma ($param) < $sigma_old;
+        $image->{$param} += 360;
+    }
+
+    my $average_r = $self->_average ('r');
+    my $average_p = $self->_average ('p');
+    my $average_y = $self->_average ('y');
+
+    if ($param eq 'r')
+    {
+        $self->Transform (0, 0, 0 - $average_y);
+          $self->Transform (0, 0 - $average_p, 0);
+            $self->Transform (0 - $average_r, 0, 0);
+          $self->Transform (0, $average_p, 0);
+        $self->Transform (0, 0, $average_y);
+    }
+    if ($param eq 'p')
+    {
+        $self->Transform (0, 0, 0 - $average_y);
+          $self->Transform (0, 0 - $average_p, 0);
+        $self->Transform (0, 0, $average_y);
+    }
+    if ($param eq 'y')
+    {
+        $self->Transform (0, 0, 0 - $average_y);
+    }
+}
+
+sub _average
+{
+    my $self = shift;
+    my $param = shift;
+    my $sum = 0;
+    for my $image (@{$self->Image})
+    {
+        $sum += $image->{$param}
+    }
+    return $sum / scalar @{$self->Image};
+}
+
+sub Sigma
+{
+    my $self = shift;
+    my $param = shift;
+    my $sum = 0;
+    my $average = $self->_average ($param);
+    for my $image (@{$self->Image})
+    {
+        my $variation = $image->{$param} - $average;
+        $sum += $variation * $variation;
+    }
+    my $variance = $sum / scalar @{$self->Image};
+    return sqrt ($variance);
+}
+ 
 =head1 COPYRIGHT
 
 Copyright (c) 2001 Bruno Postle <bruno@postle.net>. All Rights Reserved.

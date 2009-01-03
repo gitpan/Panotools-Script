@@ -16,12 +16,15 @@ bin/process-masks
 bin/process-masks-gui
 bin/pto2fulla
 bin/pto2tiff
+bin/ptocentre
 bin/ptoclean
 bin/ptograph
 bin/ptoinfo
 bin/ptoinfo-gui
 bin/ptomerge
 bin/ptopath
+bin/ptoget
+bin/ptoset
 bin/ptosort
 bin/ptosplit
 bin/qtvr2erect

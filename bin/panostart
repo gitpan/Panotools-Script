@@ -61,12 +61,16 @@ my $rule_mks = new File::Pto::Mk::Rule;
 $rule_mks->Targets ('mk');
 my $rule_imgs = new File::Pto::Mk::Rule;
 $rule_imgs->Targets ('images');
+my $rule_movs = new File::Pto::Mk::Rule;
+$rule_movs->Targets ('qtvr');
 
 my @rules_pto;
 my @rules_mk;
 my @rules_ldr_blended;
 my @rules_ldr_stacked_blended;
 my @rules_hdr_blended;
+my @rules_ldr_blended_equirect;
+my @rules_ldr_stacked_blended_equirect;
 
 for my $group (@{$groups})
 {
@@ -83,15 +87,19 @@ for my $group (@{$groups})
     $rule_mks->Prerequisites ("$stub.pto.mk");
 
     my $path_img;
+    my $path_mov;
     if (is_stacks (@{$group}))
     {
         $path_img = $stub ."_fused.tif";
+        $path_mov = $stub ."_fused.mov";
     }
     else
     {
         $path_img = $stub .".tif";
+        $path_mov = $stub .".mov";
     }
     $rule_imgs->Prerequisites ($path_img);
+    $rule_movs->Prerequisites ($path_mov);
 
     print STDERR "$path_img: ". scalar @{$group} ." images\n" if $verbose;
 
@@ -128,6 +136,23 @@ for my $group (@{$groups})
 
     push @rules_ldr_stacked_blended, $rule_ldr_stacked_blended;
 
+    my $rule_ldr_blended_equirect = new File::Pto::Mk::Rule;
+    $rule_ldr_blended_equirect->Targets ("$stub.mov", "$stub-sky.jpg", "$stub-planet.jpg", "$stub-mercator.jpg");
+    $rule_ldr_blended_equirect->Prerequisites ("$stub.pto", "$stub.pto.mk", "$stub.tif");
+    $rule_ldr_blended_equirect->Command ('make', '-e', '-f', '$(HUGINDATADIR)/Makefile.equirect.mk',
+        'equirect_all', 'equirect_clean', "PTO=$stub.pto", 'FUSED_SUFFIX=');
+
+    push @rules_ldr_blended_equirect, $rule_ldr_blended_equirect;
+
+    my $stub_f = $stub .'_fused';
+    my $rule_ldr_stacked_blended_equirect = new File::Pto::Mk::Rule;
+    $rule_ldr_stacked_blended_equirect->Targets ("$stub_f.mov", "$stub_f-sky.jpg", "$stub_f-planet.jpg", "$stub_f-mercator.jpg");
+    $rule_ldr_stacked_blended_equirect->Prerequisites ("$stub.pto", "$stub.pto.mk", "$stub_f.tif");
+    $rule_ldr_stacked_blended_equirect->Command ('make', '-e', '-f', '$(HUGINDATADIR)/Makefile.equirect.mk',
+        'equirect_all', 'equirect_clean', "PTO=$stub.pto", 'FUSED_SUFFIX=_fused');
+
+    push @rules_ldr_stacked_blended_equirect, $rule_ldr_stacked_blended_equirect;
+
     my $rule_hdr_blended = new File::Pto::Mk::Rule;
     $rule_hdr_blended->Targets ($stub ."_hdr.exr");
     $rule_hdr_blended->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
@@ -144,22 +169,31 @@ my $rule_phony = new File::Pto::Mk::Rule;
 $rule_phony->Targets ('.PHONY');
 $rule_phony->Prerequisites (qw/all images pto mk/);
 
+my $rule_self = new File::Pto::Mk::Rule;
+$rule_self->Targets ($path_makefile);
+$rule_self->Prerequisites (@ARGV);
+$rule_self->Command ($0, @argv_save);
+
 open MAKE, ">", $path_makefile or die "cannot write-open $path_makefile";
 
 print MAKE "# Created by Panotools::Script $Panotools::Script::VERSION\n";
-print MAKE "# $0 ". join (' ', @argv_save). "\n\n";
 print MAKE $rule_phony->Assemble;
 print MAKE $rule_all->Assemble;
 print MAKE $rule_ptos->Assemble;
 print MAKE $rule_mks->Assemble;
 print MAKE $rule_imgs->Assemble;
+print MAKE $rule_movs->Assemble;
 print MAKE "MAKE_EXTRA_ARGS=clean\n";
+print MAKE "HUGINDATADIR=/usr/share/hugin\n";
 print MAKE "AP_EXTRA_ARGS=--clean\n\n";
 print MAKE map {$_->Assemble} @rules_pto;
 print MAKE map {$_->Assemble} @rules_mk;
 print MAKE map {$_->Assemble} @rules_ldr_blended;
 print MAKE map {$_->Assemble} @rules_ldr_stacked_blended;
+print MAKE map {$_->Assemble} @rules_ldr_blended_equirect;
+print MAKE map {$_->Assemble} @rules_ldr_stacked_blended_equirect;
 print MAKE map {$_->Assemble} @rules_hdr_blended;
+print MAKE $rule_self->Assemble;
 
 close MAKE;
 

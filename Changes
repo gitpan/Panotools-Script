@@ -1,5 +1,14 @@
 Revision history for Panotools::Script.
 
+0.20
+    - Centre() method to try and place images in middle of the panorama
+    - new tool ptocentre
+    - panostart rules for building qtvr, mercator, planet views etc...
+    - Write() update 'o' lines when writing if project already contains 'o' lines
+    - Merge() only merge image metadata if already existing
+    - tif2svg only trace outlines if --trace option given
+    - ptoget and ptoset tools to query and set global project parameters
+
 0.19
     - add pafextract to MANIFEST
 
