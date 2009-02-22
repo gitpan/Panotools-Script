@@ -36,7 +36,7 @@ use File::Spec;
 
 use Storable qw/ dclone /;
 
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -478,7 +478,8 @@ sub Subset
 
         # copy only optimisation parameters for selected image
         $pto_out->{variable}->{$mapping->{$index}}
-            = {%{$self->{variable}->{$index}}};
+            = {%{$self->{variable}->{$index}}}
+            if defined $self->{variable}->{$index};
     }
 
     # copy only control points related to selected images

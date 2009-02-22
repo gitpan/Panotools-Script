@@ -27,6 +27,8 @@ bin/ptoget
 bin/ptoset
 bin/ptosort
 bin/ptosplit
+bin/ptsed
+bin/ptscluster
 bin/qtvr2erect
 bin/qtvr2erect-gui
 bin/tif2svg

@@ -1,5 +1,13 @@
 Revision history for Panotools::Script.
 
+0.21
+    - ptoclean, don't give autooptimiser projects with invalid lenses
+    - ptosplit choked on images without associated 'v' lines (Ryan Helinski)
+    - new tool ptsed for editing project files, also useful for converting
+      .pto projects to PToptimizer compatible scripts (Iouri Ivliev)
+    - ptscluster tool for removing bad control points, uses PToptimizer
+      output from libpano13-2.9.14 or later (Iouri Ivliev)
+
 0.20
     - Centre() method to try and place images in middle of the panorama
     - new tool ptocentre

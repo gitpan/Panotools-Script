@@ -31,6 +31,8 @@ ptopath
 ptoset
 ptosort
 ptosplit
+ptsed
+ptscluster
 qtvr2erect
 tif2svg
 transform-pano/;

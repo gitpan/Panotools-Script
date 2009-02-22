@@ -50,7 +50,7 @@ for my $index_a (0 .. scalar @{$p->Image} -1)
         my $p_temp = $p->Clone;
         $p_temp->{control} = $control_temp;
 
-        unless ($fast)
+        unless ($fast or scalar @{$p_temp->Control} == 0)
         {
             $p_temp->{variable} = new Panotools::Script::Line::Variable;
             $p_temp->Variable->{$index_b} = {r => 1, p => 1, y => 1};
@@ -58,9 +58,11 @@ for my $index_a (0 .. scalar @{$p->Image} -1)
             $p_temp->Variable->{0}->{v} = 1 if (scalar @{$control_temp} > 4);
             $p_temp->Variable->{0}->{b} = 1 if (scalar @{$control_temp} > 6);
             $p_temp->Variable->{0}->{c} = 1 if (scalar @{$control_temp} > 8);
-            $p_temp->Image->[$index_a]->Set (a => 0, b => 0, c => 0, d => 0, e => 0);
-            $p_temp->Image->[$index_b]->Set (a => "=$index_a", b => "=$index_a", c => "=$index_a",
-                                             d => "=$index_a", e => "=$index_a");
+            $p_temp->Image->[0]->Set (a => 0, b => 0, c => 0, d => 0, e => 0);
+            $p_temp->Image->[$index_a]->Set (a => "=0", b => "=0", c => "=0",
+                                             d => "=0", e => "=0") unless ($index_a == 0);
+            $p_temp->Image->[$index_b]->Set (a => "=0", b => "=0", c => "=0",
+                                             d => "=0", e => "=0");
 
             my $pto_in_tmp = File::Spec->catfile ($tempdir, "$index_a-$index_b.in.pto");
             my $pto_out_tmp = File::Spec->catfile ($tempdir, "$index_a-$index_b.out.pto");
