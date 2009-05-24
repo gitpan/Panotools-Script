@@ -71,7 +71,14 @@ system ('nona', '-o', "$prefix-face", $pto_temp);
 # generate JPEG cubefaces
 for my $index (0 .. 5)
 {
-    system ('convert', '-quality', $quality, "$prefix-face000$index.tif", "$prefix-face000$index.jpg");
+    if ($^O eq "darwin")
+    {
+        system ('sips', '-s', 'format', 'jpeg', '-s', 'formatOptions', $quality, "$prefix-face000$index.tif", '--out', "$prefix-face000$index.jpg");
+    }
+    else
+    {
+        system ('convert', '-quality', $quality, "$prefix-face000$index.tif", "$prefix-face000$index.jpg");
+    }
 }
 
 # fisheye cubefaces for preview track
@@ -92,12 +99,26 @@ $scratch->Image->[0] = new Panotools::Script::Line::Image;
 for my $index (0 .. 5)
 {
     # generate JPEG preview cubefaces
-    system ('mogrify', '-geometry', '32x32', "$prefix-preview000$index.tif");
+    if ($^O eq "darwin")
+    {
+        system ('sips', '-z', '32', '32', "$prefix-preview000$index.tif");
+    }
+    else
+    {
+        system ('mogrify', '-geometry', '32x32', "$prefix-preview000$index.tif");
+    }
     $scratch->Image->[0]->Set (w => 32, h => 32, v => 100, f => 3, r => 0, p => 0, y => 0, n => "\"$prefix-preview000$index.tif\"");
     $scratch->Write ($pto_temp);
     system ('nona', '-o', "$prefix-preview-rectilinear.tif", $pto_temp);
     unlink $pto_temp;
-    system ('convert', '-quality', $quality, "$prefix-preview-rectilinear.tif", "$prefix-preview000$index.jpg");
+    if ($^O eq "darwin")
+    {
+        system ('sips', '-s', 'format', 'jpeg', '-s', 'formatOptions', $quality, "$prefix-preview-rectilinear.tif", '--out', "$prefix-preview000$index.jpg");
+    }
+    else
+    {
+        system ('convert', '-quality', $quality, "$prefix-preview-rectilinear.tif", "$prefix-preview000$index.jpg");
+    }
 }
 
 print "Tempdir: $tempdir\n" unless $cleanup;

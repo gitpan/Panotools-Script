@@ -14,8 +14,6 @@ bin/pafextract
 bin/panostart
 bin/process-masks
 bin/process-masks-gui
-bin/pto2fulla
-bin/pto2tiff
 bin/ptocentre
 bin/ptoclean
 bin/ptograph
@@ -27,6 +25,7 @@ bin/ptoget
 bin/ptoset
 bin/ptosort
 bin/ptosplit
+bin/ptovariable
 bin/ptsed
 bin/ptscluster
 bin/qtvr2erect

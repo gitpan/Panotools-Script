@@ -1,5 +1,15 @@
 Revision history for Panotools::Script.
 
+0.22
+    - Use ImageMagick to workaround matchpoint alpha channel bug
+    - panostart --nostacks option for point-and-shoot sequences with random exposure
+    - match-n-shift workaround EXIF exposure time in both decimal and fractions
+    - unfinished tool ptovariable for setting optimisation parameters
+    - match-n-shift does photometric optimisation unless --stacks specified
+    - erect2qtvr uses sips instead of ImageMagick on OS X
+    - remove pto2fulla as superceded by tca_correct
+    - remove pto2tiff as superceded by pto2mk
+
 0.21
     - ptoclean, don't give autooptimiser projects with invalid lenses
     - ptosplit choked on images without associated 'v' lines (Ryan Helinski)

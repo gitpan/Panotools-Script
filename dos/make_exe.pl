@@ -19,8 +19,6 @@ nona-mask
 pafextract
 panostart
 process-masks
-pto2fulla
-pto2tiff
 ptocentre
 ptoclean
 ptoget
@@ -31,6 +29,7 @@ ptopath
 ptoset
 ptosort
 ptosplit
+ptovariable
 ptsed
 ptscluster
 qtvr2erect

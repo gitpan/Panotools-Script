@@ -96,11 +96,18 @@ if ($dostacks)
     {
 
     my $longest;
+    my $sec_longest;
     for my $et (keys %{$speeds})
     {
-        $et =~ s/1\///;
+        my $sec_et = $et;
+        if ($sec_et =~ /^1\/([0-9]+)$/)
+        {
+            $sec_et = 1 / $1;
+        }
+        
         $longest = $et unless defined $longest;
-        $longest = $et if $et < $longest;
+        $sec_longest = $sec_et unless defined $sec_longest;
+        $longest = $et if $sec_et > $sec_longest;
     }
 
     print STDERR "Longest exposure: $longest\n";
@@ -110,7 +117,7 @@ if ($dostacks)
     {
         my $exif_info = Image::ExifTool::ImageInfo ($path_photo, 'ExposureTime', 'ShutterSpeed');
         my $et = $exif_info->{ExposureTime} || $exif_info->{ShutterSpeed};
-        push @{$bases}, $path_photo if $et eq "1/$longest";
+        push @{$bases}, $path_photo if $et eq $longest;
     }
 
     my $stacks;
@@ -187,6 +194,7 @@ for my $path_output_small (@paths_output)
     next if (-e $path_key and not $clean);
     if ($matchpoint)
     {
+        system ('mogrify', '+matte', $path_output_small);
         system ('matchpoint', $path_output_small, $path_key);
     }
     else
@@ -331,6 +339,11 @@ if ($align)
     system ('autooptimiser', '-a', '-l', '-s', '-o', $tempfile, $tempfile);
     system ('ptoclean', '-o', $tempfile, $tempfile);
     system ('autooptimiser', '-n', '-l', '-o', $path_oto, $tempfile);
+    unless ($dostacks)
+    {
+         system ('ptovariable', '--vignetting', '--response', '--exposure', $path_oto);
+         system ('vig_optimize', '-o', $path_oto, $path_oto);
+    }
 }
 
 # voodoo

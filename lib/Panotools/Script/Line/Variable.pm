@@ -77,6 +77,7 @@ sub Assemble
         my @tokens;
         for my $param (sort keys %{$self->{$image}})
         {
+            next unless $self->{$image}->{$param};
             push @tokens, $param . $image;
         }
         $string .= (join ' ', ($self->Identifier, @tokens)) ."\n";

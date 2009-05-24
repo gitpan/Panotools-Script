@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Encoding=UTF-8
-Name=SVG layer blender
+Name=Enblend SVG blender
 Comment=Split and blend SVG layers
 Exec=enblend-svg-gui %f
 Icon=hugin

@@ -1,0 +1,140 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+use Panotools::Script;
+use Getopt::Long;
+use Pod::Usage;
+
+my $help = 0;
+my $positions = 0;
+my $view = 0;
+my $barrel = 0;
+my $centre = 0;
+my $vignetting = 0;
+my $vignetting_centre = 0;
+my $response = 0;
+my $exposure = 0;
+my $white_balance = 0;
+my $path_output;
+
+GetOptions ('p|positions' => \$positions,
+            'v|view' => \$view,
+            'b|barrel' => \$barrel,
+            'c|centre' => \$centre,
+            'p|positions' => \$positions,
+            'm|vignetting' => \$vignetting,
+            'n|vignetting-centre' => \$vignetting_centre,
+            'r|response' => \$response,
+            'e|exposure' => \$exposure,
+            'w|white-balance' => \$white_balance,
+            'o|output=s' => \$path_output,
+            'h|help' => \$help);
+
+pod2usage (-verbose => 2) if $help;
+
+my $path_pto = shift || pod2usage;
+die "Can't find $path_pto" unless -e $path_pto;
+$path_output = $path_pto unless defined $path_output;
+
+my $pto = new Panotools::Script;
+$pto->Read ($path_pto);
+
+my $variable = $pto->Variable;
+
+# FIXME assumes image 0 is anchor
+my $anchor = $variable->{0};
+
+$anchor->{v} = $view;
+
+$anchor->{b} = $barrel;
+
+$anchor->{d} = $centre;
+$anchor->{e} = $centre;
+
+$anchor->{Vb} = $vignetting;
+$anchor->{Vc} = $vignetting;
+$anchor->{Vd} = $vignetting;
+
+$anchor->{Vx} = $vignetting_centre;
+$anchor->{Vy} = $vignetting_centre;
+
+$anchor->{Ra} = $response;
+$anchor->{Rb} = $response;
+$anchor->{Rc} = $response;
+$anchor->{Rd} = $response;
+$anchor->{Re} = $response;
+
+# FIXME assumes image 0 is anchor
+for my $index (1 .. scalar @{$pto->Image} -1)
+{
+    $variable->{$index}->{r} = $positions;
+    $variable->{$index}->{p} = $positions;
+    $variable->{$index}->{y} = $positions;
+
+    $variable->{$index}->{Eev} = $exposure;
+
+    $variable->{$index}->{Er} = $white_balance;
+    $variable->{$index}->{Eb} = $white_balance;
+}
+
+$pto->Write ($path_output);
+
+__END__
+
+=head1 NAME
+
+ptovariable - prepare a pto project for typical optimisation tasks
+
+=head1 SYNOPSIS
+
+ptovariable [options] project.pto
+
+ Options:
+  -p | --positions          Optimise positions
+  -v | --view               Optimise angle of view
+  -b | --barrel             Optimise barrel distortion
+  -c | --centre             Optimise optical centre
+  -m | --vignetting         Optimise vignetting
+  -n | --vignetting-centre  Optimise vignetting centre
+  -r | --response           Optimise camera response EMoR parameters
+  -e | --exposure           Optimise exposure (EV)
+  -w | --white-balance      Optimise colour balance
+  -o | --output OUTFILE     Specify output file default is to overwrite input       
+  -h | --help               Outputs help documentation
+
+=head1 DESCRIPTION
+
+B<ptovariable> sets optimisation variable 'v' lines for a hugin .pto project.
+Usually this is a preparation for optimisation with autooptimiser or
+vig_optimize.
+
+=head1 EXAMPLES
+
+This performs the equivalent of the 'Positions, View and Barrel (y,p,r,v,b)'
+preset on the hugin Optimiser tab:
+
+  ptovariable --positions --view --barrel project.pto
+  autooptimiser -n -o project.pto project.pto
+
+This is the equivalent of the 'Low dynamic range' preset on the hugin Exposure
+tab:
+
+  ptovariable --vignetting --response --exposure project.pto
+  vig_optimize -o project.pto project.pto
+
+=head1 LICENSE
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+=head1 SEE ALSO
+
+L<http://hugin.sourceforge.net/>
+
+=head1 AUTHOR
+
+Bruno Postle - April 2009.
+
+=cut

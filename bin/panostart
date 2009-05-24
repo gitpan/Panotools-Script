@@ -14,6 +14,7 @@ my $deg_fov;
 my $crop_s;
 my $help = 0;
 my $verbose = 0;
+my $nostacks = 0;
 
 my @argv_save = @ARGV;
 
@@ -23,6 +24,7 @@ GetOptions ('o|output=s' => \$path_makefile,
             'v|fov=s' => \$deg_fov,
             'k|selection=s' => \$crop_s,
             'l|loquacious' => \$verbose,
+            'n|nostacks' => \$nostacks,
             'h|help' => \$help);
 
 pod2usage (-verbose => 2) if $help;
@@ -106,7 +108,9 @@ for my $group (@{$groups})
     my $rule_pto = new File::Pto::Mk::Rule;
     $rule_pto->Targets ("$stub.pto");
     $rule_pto->Prerequisites (@{$group});
-    $rule_pto->Command ('match-n-shift', '--stacks', '--align',
+    my @stacks = '--stacks';
+    @stacks = () if $nostacks;
+    $rule_pto->Command ('match-n-shift', @stacks, '--align',
                             '$(AP_EXTRA_ARGS)', '--output', "$stub.pto");
     $rule_pto->Command ('--projection', $projection) if defined $projection;
     $rule_pto->Command ('--fov', $deg_fov) if defined $deg_fov;
@@ -199,6 +203,7 @@ close MAKE;
 
 sub is_stacks
 {
+    return 0 if $nostacks;
     my $speeds = {};
     for my $path_photo (@_)
     {
@@ -283,6 +288,7 @@ panostart [options] --output Makefile image1 image2 [...]
                           3 for full-frame fisheye images.
   -v | --fov            Horizontal field of view in degrees
   -k | --selection      Crop selection boundary, eg -459,2459,-57,2861
+  -n | --nostacks       Don't try and align stacks for point and shoot cameras
   -h | --help           Outputs help documentation.
   -l | --loquacious     Verbose output listing targets and numbers of images.
 

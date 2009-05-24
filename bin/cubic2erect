@@ -57,9 +57,9 @@ cubic2erect - Utility to convert six cube faces to equirectangular
 
 =head1 DESCRIPTION
 
-`cubic2erect' is a command-line utility program for converting six cube faces
+'cubic2erect' is a command-line utility program for converting six cube faces
 to a single TIFF format equirectangular file suitable for viewing with
-`panoglview'.
+'panoglview'.
 
 Input files must be JPEG, PPM or TIFF format, output is in TIFF format.
 

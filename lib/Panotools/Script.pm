@@ -36,7 +36,7 @@ use File::Spec;
 
 use Storable qw/ dclone /;
 
-our $VERSION = '0.21';
+our $VERSION = '0.22';
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};

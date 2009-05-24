@@ -1,7 +1,7 @@
 [Desktop Entry]
 Version=1.0
 Encoding=UTF-8
-Name=QTVR converter
+Name=QTVR extractor
 Comment=Convert QTVR files to equirectangular
 Exec=qtvr2erect-gui %f
 Icon=hugin
