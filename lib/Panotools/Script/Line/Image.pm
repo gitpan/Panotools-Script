@@ -31,6 +31,11 @@ Basically the same format as an 'o' line.
                    2 - Circular fisheye
                    3 - full-frame fisheye
                    4 - PSphere, equirectangular
+                   7 - Mirror (a spherical mirror)
+                   8 - Orthographic fisheye
+                  10 - Stereographic fisheye
+                  21 - Equisolid fisheye
+
   v82          horizontal field of view of image (required)
   y0           yaw angle (required)
   p43          pitch angle (required)
@@ -45,6 +50,7 @@ Basically the same format as an 'o' line.
                    of the line scanner relative to the film transport
                    g - horizontal shear
                    t - vertical shear
+  j            stack number
 
   Eev          exposure of image in EV (exposure values)
   Er           white balance factor for red channel
@@ -107,7 +113,7 @@ sub _defaults
     my $self = shift;
 }
 
-sub _valid { return '^([abcdefghnprtvwy]|[SCXYZ]|K[0-2][ab]|V[abcdfmxy]|Eev|E[rb]|R[abcde])(.*)' }
+sub _valid { return '^([abcdefghjnprtvwy]|[SCXYZ]|K[0-2][ab]|V[abcdfmxy]|Eev|E[rb]|R[abcde])(.*)' }
 
 sub _valid_ptoptimizer { return '^([abcdefghnprtvwySC])(.*)' }
 
@@ -191,6 +197,10 @@ sub Report
     $format = "Circular Fisheye" if $self->{f} == 2;
     $format = "Full-frame Fisheye" if $self->{f} == 3;
     $format = "Equirectangular" if $self->{f} == 4;
+    $format = "Mirror (a spherical mirror)" if $self->{f} == 7;
+    $format = "Orthographic fisheye" if $self->{f} == 8;
+    $format = "Stereographic fisheye" if $self->{f} == 10;
+    $format = "Equisolid fisheye" if $self->{f} == 21;
 
     push @report, ['Dimensions', $self->{w} .'x'. $self->{h}];
     push @report, ['Megapixels', int ($self->{w} * $self->{h} / 1024 / 1024 * 10) / 10];
@@ -200,11 +210,11 @@ sub Report
     push @report, ['Lens distortion', $self->{a} .','. $self->{b} .','. $self->{c}] if defined $self->{a};
     push @report, ['Image centre', $self->{d} .','. $self->{e}] if defined $self->{d};
     push @report, ['Image shear', $self->{g} .','. $self->{t}] if defined $self->{g};
-    push @report, ['Exposure Value', $self->{Eev}];
-    push @report, ['Red Blue colour balance', $self->{Er} .','. $self->{Eb}];
-    push @report, ['EMOR parameters', $self->{Ra} .','. $self->{Rb} .','. $self->{Rc} .','. $self->{Rd} .','. $self->{Re}];
-    push @report, ['Vignetting parameters', $self->{Va} .','. $self->{Vb} .','. $self->{Vc} .','. $self->{Vd}];
-    push @report, ['Vignetting centre', $self->{Vx} .','. $self->{Vy}];
+    push @report, ['Exposure Value', $self->{Eev}] if defined $self->{Eev};
+    push @report, ['Red Blue colour balance', $self->{Er} .','. $self->{Eb}] if defined $self->{Er};
+    push @report, ['EMOR parameters', $self->{Ra} .','. $self->{Rb} .','. $self->{Rc} .','. $self->{Rd} .','. $self->{Re}] if defined $self->{Ra};
+    push @report, ['Vignetting parameters', $self->{Va} .','. $self->{Vb} .','. $self->{Vc} .','. $self->{Vd}] if defined $self->{Va};
+    push @report, ['Vignetting centre', $self->{Vx} .','. $self->{Vy}] if defined $self->{Vx};
     push @report, ['Selection area', $self->{S}] if defined $self->{S};
     push @report, ['File name', $self->{n}];
 

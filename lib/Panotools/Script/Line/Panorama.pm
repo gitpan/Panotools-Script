@@ -28,6 +28,14 @@ Panorama parameters are described by a 'p' line
                    8 - Lambert Equal Area Cylindrical
                    9 - Lambert Azimuthal
                   10 - Albers Equal Area Conical
+                  11 - Miller Cylindrical
+                  12 - Panini
+                  13 - Architectural
+                  14 - Orthographic
+                  15 - Equisolid
+                  16 - Equirectangular Panini
+                  17 - Biplane
+                  18 - Triplane
 
   v360         horizontal field of view of panorama (default 360)
   nPICT        Panorama file format, one of:
@@ -115,10 +123,17 @@ sub Report
     $format = "Lambert Equal Area Cylindrical" if $self->{f} == 8;
     $format = "Lambert Azimuthal" if $self->{f} == 9;
     $format = "Albers Equal Area Conical" if $self->{f} == 10;
+    $format = "Miller Cylindrical" if $self->{f} == 11;
+    $format = "Panini" if $self->{f} == 12;
+    $format = "Architectural" if $self->{f} == 13;
+    $format = "Orthographic" if $self->{f} == 14;
+    $format = "Equisolid" if $self->{f} == 15;
+    $format = "Equirectangular Panini" if $self->{f} == 16;
+    $format = "Biplane" if $self->{f} == 17;
+    $format = "Triplane" if $self->{f} == 18;
 
-    my $mode;
-    $mode = "LDR" if $self->{R} == 0;
-    $mode = "HDR" if $self->{R} == 1;
+    my $mode = "LDR";
+    $mode = "HDR" if defined $self->{R} and $self->{R} == 1;
 
     push @report, ['Dimensions', $self->{w} .'x'. $self->{h}];
     push @report, ['Megapixels', int ($self->{w} * $self->{h} / 1024 / 1024 * 10) / 10];

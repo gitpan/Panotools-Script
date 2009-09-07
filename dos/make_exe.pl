@@ -21,6 +21,7 @@ panostart
 process-masks
 ptocentre
 ptoclean
+ptodummy
 ptoget
 ptograph
 ptoinfo

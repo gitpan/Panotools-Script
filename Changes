@@ -1,5 +1,13 @@
 Revision history for Panotools::Script.
 
+0.23
+    - Add new projections to pod documentation and ptoinfo output
+    - Add empty 'v' line to all output as panotools chokes without 'v' lines
+    - New enfuse-mask tool based on enblend-mask
+    - New ptodummy tool for creating missing input photos
+    - panostart: create default Makefile if no output specified
+    - support 'i' line 'j' parameter introduced in gsoc layout project
+
 0.22
     - Use ImageMagick to workaround matchpoint alpha channel bug
     - panostart --nostacks option for point-and-shoot sequences with random exposure

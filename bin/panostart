@@ -28,7 +28,8 @@ GetOptions ('o|output=s' => \$path_makefile,
             'h|help' => \$help);
 
 pod2usage (-verbose => 2) if $help;
-pod2usage (2) unless (defined $path_makefile and scalar @ARGV > 1);
+pod2usage (2) unless scalar @ARGV > 1;
+$path_makefile = 'Makefile' unless defined $path_makefile;
 
 my $groups = [];
 

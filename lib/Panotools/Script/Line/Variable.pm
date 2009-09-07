@@ -82,6 +82,7 @@ sub Assemble
         }
         $string .= (join ' ', ($self->Identifier, @tokens)) ."\n";
     }
+    $string .= $self->Identifier ."\n";
     return $string;
 }
 
@@ -120,6 +121,7 @@ sub Report
     push @report, 'Vignetting' if $i->{Va} or $i->{Vb} or $i->{Vc} or $i->{Vd};
     push @report, 'Vignetting centre' if $i->{Vx} or $i->{Vy};
 
+    @report = ('NONE') if scalar @report == 0;
     [[('Optimise parameters', (join ',', @report))]];
 }
 

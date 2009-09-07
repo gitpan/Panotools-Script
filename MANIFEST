@@ -2,6 +2,7 @@ bin/cubic2erect
 bin/enblend-mask
 bin/enblend-svg
 bin/enblend-svg-gui
+bin/enfuse-mask
 bin/erect2cubic
 bin/erect2mercator
 bin/erect2planet
@@ -16,6 +17,7 @@ bin/process-masks
 bin/process-masks-gui
 bin/ptocentre
 bin/ptoclean
+bin/ptodummy
 bin/ptograph
 bin/ptoinfo
 bin/ptoinfo-gui
