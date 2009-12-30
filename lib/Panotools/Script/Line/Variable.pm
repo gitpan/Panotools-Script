@@ -43,7 +43,7 @@ One or more parameters for optimisation form a 'v' line
 
 =cut
 
-sub _valid { return '^([abcdegprtvyXYZ]|Eev|Er|Eb|Ra|Rb|Rc|Rd|Re|Va|Vb|Vc|Vd|Vx|Vy)(.*)' }
+sub _valid { return '^([abcdegprtvyXYZ]|Te[0123]|Tr[XYZ]|Ti[XYZS]|Eev|Er|Eb|Ra|Rb|Rc|Rd|Re|Va|Vb|Vc|Vd|Vx|Vy)(.*)' }
 
 sub Identifier
 {

@@ -55,7 +55,7 @@ sub Parse
     my $self = shift;
     my $string = shift || return 0;
     my $valid = $self->_valid;
-    my @res = $string =~ / ([a-zA-Z][^ "]+)|([a-zA-Z][a-z]?"[^"]+")/g;
+    my @res = $string =~ / ([a-zA-Z][^ "]+)|([a-zA-Z][a-z]*"[^"]+")/g;
     for my $token (grep { defined $_ } @res)
     {
         my ($key, $value) = $token =~ /$valid/;
@@ -82,6 +82,7 @@ sub Assemble
         push @tokens, $entry . $self->{$entry};
     }
     return (join ' ', ($self->Identifier, @tokens)) ."\n" if (@tokens);
+    return '';
 }
 
 =pod

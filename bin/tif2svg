@@ -45,6 +45,7 @@ for my $index (0 .. (scalar (@files) - 1))
     open (FILE, "$stub.svg") or die "Can't open $stub.svg: $!";
     my @lines = <FILE>;
     my $xml = join ('', @lines);
+    close FILE;
     my @d = $xml =~ /( d="[^"]+")/gc;
 
     print SVG qq|
@@ -65,7 +66,7 @@ for my $file (@files)
     {
         my $tif = $file;
         $file =~ s/\.tif/\.jpg/;
-        system ('convert', $tif, $file);
+        system ('convert', '-geometry', '25%', $tif, $file);
     }
     $file =~ s/.*(\/|\\)//;
     print SVG qq|

@@ -2,27 +2,34 @@
 
 use strict;
 use warnings;
-use Image::ExifTool;
 use Getopt::Long;
 use Pod::Usage;
-use Panotools::Script;
+use Panotools::Makefile;
+use Panotools::Photos;
 
 my $path_makefile;
 my $d_inc = 15;
 my $projection;
 my $deg_fov;
 my $crop_s;
+my $linkstacks;
 my $help = 0;
 my $verbose = 0;
 my $nostacks = 0;
 
+# FIXME tonemapped output
+# FIXME RAW files
+# FIXME fused then mapped then blended output
+
 my @argv_save = @ARGV;
+my $mk = new Panotools::Makefile;
 
 GetOptions ('o|output=s' => \$path_makefile,
             't|time=s' => \$d_inc,
             'f|projection=i' => \$projection,
             'v|fov=s' => \$deg_fov,
             'k|selection=s' => \$crop_s,
+            'linkstacks' => \$linkstacks,
             'l|loquacious' => \$verbose,
             'n|nostacks' => \$nostacks,
             'h|help' => \$help);
@@ -31,245 +38,165 @@ pod2usage (-verbose => 2) if $help;
 pod2usage (2) unless scalar @ARGV > 1;
 $path_makefile = 'Makefile' unless defined $path_makefile;
 
-my $groups = [];
+my $rule = $mk->Rule ('.PHONY');
+$rule->Prerequisites (qw/all images pto pointless pointless_mk mk qtvr hdr/);
 
-my $group_tmp = [];
-my $previous_time;
-my $previous_inc = 0;
-for my $path_photo (@ARGV)
+$rule = $mk->Rule ('all');
+$rule->Prerequisites ('images');
+
+# some phony targets, prerequisites will be populated later
+
+my $rule_ptos = $mk->Rule ('pto');
+my $rule_mks = $mk->Rule ('mk');
+my $rule_pointless = $mk->Rule ('pointless');
+my $rule_pointless_mk = $mk->Rule ('pointless_mk');
+my $rule_imgs = $mk->Rule ('images');
+my $rule_movs = $mk->Rule ('qtvr');
+my $rule_hdrs = $mk->Rule ('hdr');
+
+# some variable definitions
+
+$mk->Variable ('MAKE_EXTRA_ARGS', 'clean');
+$mk->Variable ('HUGINDATADIR', '/usr/share/hugin');
+$mk->Variable ('PTO2MK', 'pto2mk');
+$mk->Variable ('MATCHNSHIFT', 'match-n-shift');
+$mk->Variable ('PTOANCHOR', 'ptoanchor');
+
+# split the list of photos into likely panoramas
+
+my $all_photos = new Panotools::Photos (@ARGV);
+
+for my $photo_set ($all_photos->SplitInterval ($d_inc))
 {
-    my $exif_info = Image::ExifTool::ImageInfo ($path_photo);
-    my $datetime = $exif_info->{'FileModificationDateTime'};
-    $datetime = $exif_info->{'DateTimeOriginal'} if (defined $exif_info->{'DateTimeOriginal'});
-    my $time_unix = Image::ExifTool::GetUnixTime ($datetime);
-    $previous_time = $time_unix unless (defined $previous_time);
-    my $inc = $time_unix - $previous_time;
+    next if scalar $photo_set->Paths == 1;
 
-    if (($inc - $previous_inc) > $d_inc)
+    my $stub = $photo_set->Stub;
+    my $stub_fused = $stub .'_fused';
+    my $stub_blended_fused = $stub .'_blended_fused';
+    my $stub_hdr = $stub .'_hdr';
+
+    if ($photo_set->Bracketed)
     {
-        push (@{$groups}, $group_tmp);
-        $group_tmp = [];
+        $rule_imgs->Prerequisites ("$stub_fused.tif");
+        $rule_movs->Prerequisites ("$stub_fused.mov");
+        $rule_hdrs->Prerequisites ("$stub_hdr.exr");
+        print STDERR "$stub_fused.tif: ". scalar $photo_set->Paths ." images\n" if $verbose;
     }
-    push @{$group_tmp}, $path_photo;
-
-    $previous_time = $time_unix;
-    $previous_inc = $inc;
-}
-push (@{$groups}, $group_tmp);
-
-
-my $rule_ptos = new File::Pto::Mk::Rule;
-$rule_ptos->Targets ('pto');
-my $rule_mks = new File::Pto::Mk::Rule;
-$rule_mks->Targets ('mk');
-my $rule_imgs = new File::Pto::Mk::Rule;
-$rule_imgs->Targets ('images');
-my $rule_movs = new File::Pto::Mk::Rule;
-$rule_movs->Targets ('qtvr');
-
-my @rules_pto;
-my @rules_mk;
-my @rules_ldr_blended;
-my @rules_ldr_stacked_blended;
-my @rules_hdr_blended;
-my @rules_ldr_blended_equirect;
-my @rules_ldr_stacked_blended_equirect;
-
-for my $group (@{$groups})
-{
-    next if scalar @{$group} == 1;
-
-    my $a = $group->[0];
-    my $b = $group->[-1];
-    $a =~ s/\.[[:alnum:]]+$//;
-    $b =~ s/\.[[:alnum:]]+$//;
-    $b =~ s/.*[\/\\]//;
-    my $stub = "$a-$b";
-
-    $rule_ptos->Prerequisites ("$stub.pto");
-    $rule_mks->Prerequisites ("$stub.pto.mk");
-
-    my $path_img;
-    my $path_mov;
-    if (is_stacks (@{$group}))
+    elsif ($photo_set->Layered)
     {
-        $path_img = $stub ."_fused.tif";
-        $path_mov = $stub ."_fused.mov";
+        $rule_imgs->Prerequisites ("$stub_blended_fused.tif");
+        $rule_movs->Prerequisites ("$stub_blended_fused.mov");
+        print STDERR "$stub_blended_fused.tif: ". scalar $photo_set->Paths ." images\n" if $verbose;
     }
     else
     {
-        $path_img = $stub .".tif";
-        $path_mov = $stub .".mov";
+        $rule_imgs->Prerequisites ("$stub.tif");
+        $rule_movs->Prerequisites ("$stub.mov");
+        print STDERR "$stub.tif: ". scalar $photo_set->Paths ." images\n" if $verbose;
     }
-    $rule_imgs->Prerequisites ($path_img);
-    $rule_movs->Prerequisites ($path_mov);
 
-    print STDERR "$path_img: ". scalar @{$group} ." images\n" if $verbose;
+    # rules for pto project files and .pto.mk files
 
-    my $rule_pto = new File::Pto::Mk::Rule;
-    $rule_pto->Targets ("$stub.pto");
-    $rule_pto->Prerequisites (@{$group});
-    my @stacks = '--stacks';
-    @stacks = () if $nostacks;
-    $rule_pto->Command ('match-n-shift', @stacks, '--align',
-                            '$(AP_EXTRA_ARGS)', '--output', "$stub.pto");
-    $rule_pto->Command ('--projection', $projection) if defined $projection;
-    $rule_pto->Command ('--fov', $deg_fov) if defined $deg_fov;
-    $rule_pto->Command ('--selection', $crop_s) if defined $crop_s;
-    $rule_pto->Command (@{$group});
+    $rule_ptos->Prerequisites ("$stub.pto");
+    $rule_mks->Prerequisites ("$stub.pto.mk");
+    $rule_pointless->Prerequisites ("$stub.pointless.pto");
+    $rule_pointless_mk->Prerequisites ("$stub.pointless.pto.mk");
 
-    push @rules_pto, $rule_pto;
+    $mk->Comment ('Create a pointless project file from a list of photos');
+    $rule = $mk->Rule;
+    $rule->Targets ("$stub.pointless.pto");
+    $rule->Prerequisites ($photo_set->Paths);
 
-    my $rule_mk = new File::Pto::Mk::Rule;
-    $rule_mk->Targets ("$stub.pto.mk");
-    $rule_mk->Prerequisites ("$stub.pto");
-    $rule_mk->Command ('pto2mk', '-o', "$stub.pto.mk", '-p', $stub, "$stub.pto");
+    my @command = ('$(MATCHNSHIFT_SHELL)');
+    push @command, ('--output', "$stub.pointless.pto");
+    push @command, ('--projection', $projection) if defined $projection;
+    push @command, ('--fov', $deg_fov) if defined $deg_fov;
+    push @command, ('--selection', $crop_s) if defined $crop_s;
+    push @command, ('--linkstacks') if $linkstacks;
+    push @command, ($photo_set->Paths);
+    $rule->Command (@command);
 
-    push @rules_mk, $rule_mk;
+    $mk->Comment ('Create a Makefile to make a finished project from a pointless project');
+    $rule = $mk->Rule;
+    $rule->Targets ("$stub.pointless.pto.mk");
+    $rule->Prerequisites ("$stub.pointless.pto");
+    $rule->Command ('$(PTOANCHOR_SHELL)', '--makefile', "$stub.pointless.pto.mk",
+                        '--output', "$stub.pto", "$stub.pointless.pto");
 
-    my $rule_ldr_blended = new File::Pto::Mk::Rule;
-    $rule_ldr_blended->Targets ($stub .".tif");
-    $rule_ldr_blended->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
-    $rule_ldr_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub .".tif", '$(MAKE_EXTRA_ARGS)');
+    $mk->Comment ('Create a finished .pto project');
+    $rule = $mk->Rule;
+    $rule->Targets ("$stub.pto");
+    $rule->Prerequisites ("$stub.pointless.pto.mk");
+    $rule->Command ('$(MAKE)', '-e', '-f', "$stub.pointless.pto.mk",
+                        'all', '$(MAKE_EXTRA_ARGS_SHELL)');
 
-    push @rules_ldr_blended, $rule_ldr_blended;
+    $mk->Comment ('Create a .pto.mk Makefile from a finished project file');
+    $rule = $mk->Rule;
+    $rule->Targets ("$stub.pto.mk");
+    $rule->Prerequisites ("$stub.pto");
+    $rule->Command ('$(PTO2MK_SHELL)', '-o', "$stub.pto.mk", '-p', $stub, "$stub.pto");
 
-    my $rule_ldr_stacked_blended = new File::Pto::Mk::Rule;
-    $rule_ldr_stacked_blended->Targets ($stub ."_fused.tif");
-    $rule_ldr_stacked_blended->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
-    $rule_ldr_stacked_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub ."_fused.tif", '$(MAKE_EXTRA_ARGS)');
+    $mk->Comment ('Rules for all possible output images');
 
-    push @rules_ldr_stacked_blended, $rule_ldr_stacked_blended;
+    $mk->Comment ('Normal seam blended output');
+    $rule = $mk->Rule;
+    $rule->Targets ("$stub.tif");
+    $rule->Prerequisites ("$stub.pto", "$stub.pto.mk", $photo_set->Paths);
+    $rule->Command ('$(MAKE)', '-e', '-f', "$stub.pto.mk", "$stub.tif", '$(MAKE_EXTRA_ARGS_SHELL)');
 
-    my $rule_ldr_blended_equirect = new File::Pto::Mk::Rule;
-    $rule_ldr_blended_equirect->Targets ("$stub.mov", "$stub-sky.jpg", "$stub-planet.jpg", "$stub-mercator.jpg");
-    $rule_ldr_blended_equirect->Prerequisites ("$stub.pto", "$stub.pto.mk", "$stub.tif");
-    $rule_ldr_blended_equirect->Command ('make', '-e', '-f', '$(HUGINDATADIR)/Makefile.equirect.mk',
+    $mk->Comment ('Exposure fused then seam blended output');
+    $rule = $mk->Rule;
+    $rule->Targets ("$stub_fused.tif");
+    $rule->Prerequisites ("$stub.pto", "$stub.pto.mk", $photo_set->Paths);
+    $rule->Command ('$(MAKE)', '-e', '-f', "$stub.pto.mk",
+                        "$stub_fused.tif", '$(MAKE_EXTRA_ARGS_SHELL)');
+
+    $mk->Comment ('Seam blended then fused output');
+    $rule = $mk->Rule;
+    $rule->Targets ("$stub_blended_fused.tif");
+    $rule->Prerequisites ("$stub.pto", "$stub.pto.mk", $photo_set->Paths);
+    $rule->Command ('$(MAKE)', '-e', '-f', "$stub.pto.mk",
+                        "$stub_blended_fused.tif", '$(MAKE_EXTRA_ARGS_SHELL)');
+
+    $mk->Comment ('HDR merged then seam blended output');
+    $rule = $mk->Rule;
+    $rule->Targets ("$stub_hdr.exr");
+    $rule->Prerequisites ("$stub.pto", "$stub.pto.mk", $photo_set->Paths);
+    $rule->Command ('$(MAKE)', '-e', '-f', "$stub.pto.mk",
+                        "$stub_hdr.exr", '$(MAKE_EXTRA_ARGS_SHELL)');
+
+    $mk->Comment ('Rules for secondary output (QTVR, little planets etc...)');
+
+    $mk->Comment ('Normal seam blended output');
+    $rule = $mk->Rule;
+    $rule->Targets ("$stub.mov", "$stub-sky.jpg", "$stub-planet.jpg", "$stub-mercator.jpg");
+    $rule->Prerequisites ("$stub.pto", "$stub.pto.mk", "$stub.tif");
+    $rule->Command ('$(MAKE)', '-e', '-f', '$(HUGINDATADIR_SHELL)/Makefile.equirect.mk',
         'equirect_all', 'equirect_clean', "PTO=$stub.pto", 'FUSED_SUFFIX=');
 
-    push @rules_ldr_blended_equirect, $rule_ldr_blended_equirect;
-
-    my $stub_f = $stub .'_fused';
-    my $rule_ldr_stacked_blended_equirect = new File::Pto::Mk::Rule;
-    $rule_ldr_stacked_blended_equirect->Targets ("$stub_f.mov", "$stub_f-sky.jpg", "$stub_f-planet.jpg", "$stub_f-mercator.jpg");
-    $rule_ldr_stacked_blended_equirect->Prerequisites ("$stub.pto", "$stub.pto.mk", "$stub_f.tif");
-    $rule_ldr_stacked_blended_equirect->Command ('make', '-e', '-f', '$(HUGINDATADIR)/Makefile.equirect.mk',
+    $mk->Comment ('Exposure fused then seam blended output');
+    $rule = $mk->Rule;
+    $rule->Targets ("$stub_fused.mov", "$stub_fused-sky.jpg",
+                        "$stub_fused-planet.jpg", "$stub_fused-mercator.jpg");
+    $rule->Prerequisites ("$stub.pto", "$stub.pto.mk", "$stub_fused.tif");
+    $rule->Command ('$(MAKE)', '-e', '-f', '$(HUGINDATADIR_SHELL)/Makefile.equirect.mk',
         'equirect_all', 'equirect_clean', "PTO=$stub.pto", 'FUSED_SUFFIX=_fused');
 
-    push @rules_ldr_stacked_blended_equirect, $rule_ldr_stacked_blended_equirect;
-
-    my $rule_hdr_blended = new File::Pto::Mk::Rule;
-    $rule_hdr_blended->Targets ($stub ."_hdr.exr");
-    $rule_hdr_blended->Prerequisites ("$stub.pto", "$stub.pto.mk", @{$group});
-    $rule_hdr_blended->Command ('make', '-e', '-f', "$stub.pto.mk", $stub ."_hdr.exr", '$(MAKE_EXTRA_ARGS)');
-
-    push @rules_hdr_blended, $rule_hdr_blended;
+    $mk->Comment ('Seam blended then fused output');
+    $rule = $mk->Rule;
+    $rule->Targets ("$stub_blended_fused.mov", "$stub_blended_fused-sky.jpg",
+                        "$stub_blended_fused-planet.jpg", "$stub_blended_fused-mercator.jpg");
+    $rule->Prerequisites ("$stub.pto", "$stub.pto.mk", "$stub_blended_fused.tif");
+    $rule->Command ('$(MAKE)', '-e', '-f', '$(HUGINDATADIR_SHELL)/Makefile.equirect.mk',
+        'equirect_all', 'equirect_clean', "PTO=$stub.pto", 'FUSED_SUFFIX=_blended_fused');
 }
 
-my $rule_all = new File::Pto::Mk::Rule;
-$rule_all->Targets ('all');
-$rule_all->Prerequisites ('images');
+$rule = $mk->Rule;
+$rule->Targets ($path_makefile);
+$rule->Prerequisites (@ARGV);
+$rule->Command ($0, @argv_save);
 
-my $rule_phony = new File::Pto::Mk::Rule;
-$rule_phony->Targets ('.PHONY');
-$rule_phony->Prerequisites (qw/all images pto mk/);
-
-my $rule_self = new File::Pto::Mk::Rule;
-$rule_self->Targets ($path_makefile);
-$rule_self->Prerequisites (@ARGV);
-$rule_self->Command ($0, @argv_save);
-
-open MAKE, ">", $path_makefile or die "cannot write-open $path_makefile";
-
-print MAKE "# Created by Panotools::Script $Panotools::Script::VERSION\n";
-print MAKE $rule_phony->Assemble;
-print MAKE $rule_all->Assemble;
-print MAKE $rule_ptos->Assemble;
-print MAKE $rule_mks->Assemble;
-print MAKE $rule_imgs->Assemble;
-print MAKE $rule_movs->Assemble;
-print MAKE "MAKE_EXTRA_ARGS=clean\n";
-print MAKE "HUGINDATADIR=/usr/share/hugin\n";
-print MAKE "AP_EXTRA_ARGS=--clean\n\n";
-print MAKE map {$_->Assemble} @rules_pto;
-print MAKE map {$_->Assemble} @rules_mk;
-print MAKE map {$_->Assemble} @rules_ldr_blended;
-print MAKE map {$_->Assemble} @rules_ldr_stacked_blended;
-print MAKE map {$_->Assemble} @rules_ldr_blended_equirect;
-print MAKE map {$_->Assemble} @rules_ldr_stacked_blended_equirect;
-print MAKE map {$_->Assemble} @rules_hdr_blended;
-print MAKE $rule_self->Assemble;
-
-close MAKE;
-
-sub is_stacks
-{
-    return 0 if $nostacks;
-    my $speeds = {};
-    for my $path_photo (@_)
-    {
-        my $exif_info = Image::ExifTool::ImageInfo ($path_photo, 'ExposureTime', 'ShutterSpeed');
-        my $et = $exif_info->{ExposureTime} || $exif_info->{ShutterSpeed} || 0;
-        $speeds->{$et} = 'TRUE';
-    }
-
-    my $brackets = scalar keys (%{$speeds});
-    return 0 if (scalar (@_) % $brackets);
-    return 0 if ($brackets < 2);
-    return 1;
-}
-
-package File::Pto::Mk::Rule;
-use strict;
-use warnings;
-
-sub new
-{
-    my $class = shift;
-    $class = ref $class || $class;
-    my $self = bless {targets => [], prerequisites => [], command => []}, $class;
-    return $self;
-}
-
-sub Assemble
-{
-    my $self = shift;
-    return 0 unless scalar @{$self->{targets}};
-
-    my $text;
-    $text .= join ' ', (map { _quoteshell ($_)} @{$self->{targets}});
-    $text .= ' : ';
-    $text .= join ' ', (map { _quoteshell ($_)} @{$self->{prerequisites}});
-    $text .= "\n\t" if scalar @{$self->{command}};
-    $text .= join ' ', (map { _quoteshell ($_)} @{$self->{command}});
-    $text .= "\n\n";
-    return $text;
-}
-
-sub Targets
-{
-    my $self = shift;
-    push @{$self->{targets}}, @_;
-}
-
-sub Prerequisites
-{
-    my $self = shift;
-    push @{$self->{prerequisites}}, @_;
-}
-
-sub Command
-{
-    my $self = shift;
-    push @{$self->{command}}, @_;
-}
-
-sub _quoteshell
-{
-    my $string = shift;
-    $string =~ s/(['"\[\] `&*+~#:<?>|])/\\$1/g;
-    return $string;
-}
+$mk->Write ($path_makefile);
 
 __END__
 
@@ -279,7 +206,7 @@ panostart - identify likely panorama sequences
 
 =head1 SYNOPSIS
 
-panostart [options] --output Makefile image1 image2 [...]
+panostart [options] image1 image2 [...]
 
  Options:
   -o | --output name    Filename of created Makefile
@@ -287,9 +214,10 @@ panostart [options] --output Makefile image1 image2 [...]
   -f | --projection     Panotools style input projection number. Use
                           0 for rectilinear, 2 for circular fisheye and
                           3 for full-frame fisheye images.
-  -v | --fov            Horizontal field of view in degrees
+  -v | --fov            Horizontal field of view in degrees.  Otherwise will
+                        be calculated from EXIF info.
   -k | --selection      Crop selection boundary, eg -459,2459,-57,2861
-  -n | --nostacks       Don't try and align stacks for point and shoot cameras
+       --linkstacks     Hard link positions of stacked photos.
   -h | --help           Outputs help documentation.
   -l | --loquacious     Verbose output listing targets and numbers of images.
 

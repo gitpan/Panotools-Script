@@ -2,24 +2,20 @@
 
 use strict;
 use warnings;
-use File::Spec;
 use Getopt::Long;
 use Pod::Usage;
-use Image::Size;
-use Image::ExifTool;
-use Math::Trig;
 use Panotools::Script;
-use File::Temp qw/tempdir/;
+use Panotools::Photos;
 
 my $path_oto;
-my $pix_max = 800;
-my $points = 10;
+my $pix_max = 1600;
+my $points = 25;
 my $noransac = 0;
-my $matchpoint = 0;
 my $refine = 0;
 my $dostacks = 0;
+my $linkstacks = 0;
 my $projection = 0;
-my $deg_fov = 50;
+my $deg_fov;
 my $crop_s = undef;
 my $align = 0;
 my $clean = 0;
@@ -29,9 +25,9 @@ GetOptions ('o|output=s' => \$path_oto,
             's|size=i' => \$pix_max,
             'p|points=i' => \$points,
             'n|noransac' => \$noransac,
-            'm|matchpoint' => \$matchpoint,
             'r|refine' => \$refine,
             'b|stacks' => \$dostacks,
+            'l|linkstacks' => \$linkstacks,
             'f|projection=i' => \$projection,
             'v|fov=s' => \$deg_fov,
             'k|selection=s' => \$crop_s,
@@ -41,372 +37,104 @@ GetOptions ('o|output=s' => \$path_oto,
 
 # code assumes images are sorted
 @ARGV = sort @ARGV;
-my @paths_input = @ARGV;
 
 pod2usage (-verbose => 2) if $help;
-pod2usage (2) unless (defined $path_oto and scalar @paths_input > 1);
+pod2usage (2) unless (scalar @ARGV > 1);
 
+my $photos_all = new Panotools::Photos (@ARGV);
+
+$deg_fov = 50 unless defined $deg_fov;
 # decimal separator workaround
 $deg_fov =~ s/,.*//;
-# disable ransac for wideangle shots
-my $ransac = 1; $ransac = 0 if ($noransac or $deg_fov > 60);
-# extra refine options
-my @refine = (); @refine = ('--refine', '--keep-unrefinable', 0) if $refine;
 
-my @paths_output = ();
-
-# PTmender can't write to /tmp/ if it is a separate partition, use the only
-# known writable folder for temp files.
-my ($split_vol, $split_dir, $split_file)
-    = File::Spec->splitpath (File::Spec->rel2abs ($path_oto));
-my $path_tmp = File::Spec->catpath ($split_vol, $split_dir, '');
-my $tempdir = tempdir (CLEANUP => $clean, DIR => $path_tmp);
-print STDERR "using $tempdir\n";
-
-
-# try and so something sane with bracketed stacks
-my $index_stack = 0;
-if ($dostacks)
-{
-    my @photos = map (File::Spec->rel2abs ($_), @ARGV);
-
-    my $speeds = {};
-    for my $path_photo (@photos)
-    {
-        my $exif_info = Image::ExifTool::ImageInfo ($path_photo, 'ExposureTime', 'ShutterSpeed');
-        my $et = $exif_info->{ExposureTime} || $exif_info->{ShutterSpeed};
-        $speeds->{$et} = 'TRUE';
-    }
-
-    my $brackets = scalar keys (%{$speeds});
-    print STDERR "$brackets shutter speeds found.\n";
-    if (scalar (@photos) % $brackets)
-    {
-        print STDERR "Can't align stacks, number of images not divisible by $brackets\n";
-        $dostacks = 0;
-    }
-
-    if ($brackets < 2)
-    {
-        print STDERR "Can't align stacks, no exposure bracketing detected.\n";
-        $dostacks = 0;
-    }
-
-    if ($dostacks)
-    {
-
-    my $longest;
-    my $sec_longest;
-    for my $et (keys %{$speeds})
-    {
-        my $sec_et = $et;
-        if ($sec_et =~ /^1\/([0-9]+)$/)
-        {
-            $sec_et = 1 / $1;
-        }
-        
-        $longest = $et unless defined $longest;
-        $sec_longest = $sec_et unless defined $sec_longest;
-        $longest = $et if $sec_et > $sec_longest;
-    }
-
-    print STDERR "Longest exposure: $longest\n";
-
-    my $bases;
-    for my $path_photo (@photos)
-    {
-        my $exif_info = Image::ExifTool::ImageInfo ($path_photo, 'ExposureTime', 'ShutterSpeed');
-        my $et = $exif_info->{ExposureTime} || $exif_info->{ShutterSpeed};
-        push @{$bases}, $path_photo if $et eq $longest;
-    }
-
-    my $stacks;
-    while (@photos)
-    {
-        my @stack;
-        push @stack, shift @photos for (1 .. $brackets);
-        push @{$stacks}, [@stack];
-    }
-
-    for my $stack (@{$stacks})
-    {
-        my @projection = ();
-        @projection = ('-e') if ($projection == 2 or $projection == 3);
-        system ('align_image_stack', @projection, '-f', $deg_fov,
-                    '-p', File::Spec->catfile ($tempdir, "stack_$index_stack.pto"), @{$stack});
-        $index_stack++;
-    }
-
-    @paths_input = @{$bases};
-
-    }
-}
-
-
-my $index = 0;
-
-for my $path_input (@paths_input)
-{
-    $path_input = File::Spec->rel2abs ($path_input);
-
-    # create small stereographic version
-    my ($pix_width_input, $pix_height_input) = imgsize ($path_input);
-    my $pix_width_small = $pix_max;
-    my $pix_height_small = int ($pix_height_input * $pix_width_small / $pix_width_input);
-
-    # don't use stereographic if projection isn't azimuthal
-    my $projection_panorama = 4;
-    $projection_panorama = 1 if $projection == 1;
-    $projection_panorama = 2 if $projection == 4;
-
-    # work around PTmender bug with unspecified crop boundary
-    my $projection_temp = $projection;
-    $projection_temp = 3 if ($projection == 2);
-
-    my $pto = new Panotools::Script;
-    $pto->Panorama->Set (v => $deg_fov, E => 0, f => $projection_panorama,
-        w => $pix_width_small, h => $pix_height_small, n => '"TIFF_m c:NONE"');
-    $pto->Image->[0] = new Panotools::Script::Line::Image;
-    $pto->Image->[0]->Set (w => $pix_width_input, h => $pix_height_input, v => $deg_fov,
-        f => $projection_temp, Eev => 0, r => 0, p => 0, y => 0, n => "\"$path_input\"");
-    # make script PTmender compatible
-    $pto->Mode->Set (i => 17);
-    delete $pto->Panorama->{E};
-    delete $pto->Image->[0]->{Eev};
-    my $path_pto_temp = File::Spec->catfile ($tempdir, "$index.pto");
-    $pto->Write ($path_pto_temp);
-
-    my $path_output_small = File::Spec->catfile ($tempdir, "sgraph_$index.tif");
-
-    system ('PTmender', '-o', $path_output_small, $path_pto_temp);
-    print STDERR "Created $path_output_small\n";
-    $index++;
-    push @paths_output, $path_output_small;
-}
-
-my @paths_key = ();
-
-# create XML keyfiles for stereographic version
-for my $path_output_small (@paths_output)
-{
-    my $path_key = "$path_output_small.key";
-    push @paths_key, $path_key;
-    next if (-e $path_key and not $clean);
-    if ($matchpoint)
-    {
-        system ('mogrify', '+matte', $path_output_small);
-        system ('matchpoint', $path_output_small, $path_key);
-    }
-    else
-    {
-        system ('generatekeys', $path_output_small, $path_key, $pix_max + 1);
-    }
-}
-
-# create a project file based on the keyfiles
-system ('autopano', @refine, '--ransac', $ransac,
-    '--maxmatches', $points, $path_oto, @paths_key);
-
-# delete temporary keyfiles
-for my $path_key (@paths_key)
-{
-    unlink $path_key if ($clean);
-}
-
-# Read in the generated project file
 my $oto = new Panotools::Script;
-$oto->Read ($path_oto);
 
-# fix image lines
-$index = 0;
-for my $image (@{$oto->Image})
+my $sum_Eev;
+for my $id (0 .. scalar @ARGV -1)
 {
-    $image->{f} = $projection;
-}
+    my $image = new Panotools::Script::Line::Image;
+    my $photo = $photos_all->[$id];
+    %{$image} = (
+        n => '"'. $photo->{path} .'"',
+        w => $photo->{exif}->{ImageWidth},
+        h => $photo->{exif}->{ImageHeight},
+        r => $photos_all->Rotation ($id), p => 0.0, y => 0.0,
+        a => 0.0, b => 0.0, c => 0.0, d => 0.0, e => 0.0,
+        Ra => 0, Rb => 0, Rc => 0, Rd => 0, Re => 0,
+        Va => 1, Vb => 0, Vc => 0, Vd => 0, Vx => 0, Vy => 0,
+        f => $projection,
+        Eev => $photos_all->Eev ($id),
+        v => ($photos_all->FOV ($id) || $deg_fov)
+    );
+    $image->{n} = '"'. $image->Path .'"';
+    $image->{S} = $crop_s if defined $crop_s;
+    $sum_Eev += $photos_all->Eev ($id);
 
-# fix control points
-for my $point (@{$oto->Control})
-{
-     my $n = $oto->Image->[$point->{n}];
-
-     $n->{v} = $deg_fov;
-     $n->{f} = $projection;
-
-     my $n_fov = $n->{v};
-     $n_fov = $oto->Image->[$1]->{v} if ($n_fov =~ /^=([[:digit:]]+)/);
-
-     # first convert back from stereographic
-     ($point->{x}, $point->{y}) =
-            from_sgraphic ({ rad_fov => deg2rad ($n_fov),
-                             projection => $n->{f},
-                             pix_x => $point->{x}, pix_y => $point->{y},
-                             pix_width => $n->{w}, pix_height => $n->{h}});
-
-     # scale back to original image dimensions
-     my ($n_pix_width, $n_pix_height) = imgsize (File::Spec->rel2abs ($paths_input[$point->{n}]));
-     my $n_scale_w = $n_pix_width / $n->{w};
-     my $n_scale_h = $n_pix_height / $n->{h};
-     $point->{x} *= $n_scale_w;
-     $point->{y} *= $n_scale_h;
-
-
-     my $N = $oto->Image->[$point->{N}];
-
-     $N->{v} = $deg_fov;
-     $N->{f} = $projection;
-
-     my $N_fov = $N->{v};
-     $N_fov = $oto->Image->[$1]->{v} if ($N_fov =~ /^=([[:digit:]]+)/);
-
-     # first convert back from stereographic
-     ($point->{X}, $point->{Y}) =
-            from_sgraphic ({ rad_fov => deg2rad ($N_fov),
-                             projection => $N->{f},
-                             pix_x => $point->{X}, pix_y => $point->{Y},
-                             pix_width => $N->{w}, pix_height => $N->{h}});
-
-     # scale back to original image dimensions
-     my ($N_pix_width, $N_pix_height) = imgsize (File::Spec->rel2abs ($paths_input[$point->{N}]));
-     my $N_scale_w = $N_pix_width / $N->{w};
-     my $N_scale_h = $N_pix_height / $N->{h};
-     $point->{X} *= $N_scale_w;
-     $point->{Y} *= $N_scale_h;
-}
-
-# revert to original image filenames
-$index = 0;
-for my $image (@{$oto->Image})
-{
-    $image->{n} = '"'. $paths_input[$index] .'"';
-    $index++;
-}
-
-# merge stacks
-if ($dostacks)
-{
-    my $tempfile = File::Spec->catfile ($tempdir, 'bases.oto');
-    $oto->Write ($tempfile);
-
-    my @ptos = ($tempfile);
-
-    for my $i (0 .. $index_stack -1)
+    if ($photos_all->Bracketed)
     {
-        push @ptos, File::Spec->catfile ($tempdir, "stack_$i.pto");
+        $image->{j} = int ($id / scalar @{$photos_all->Speeds});
     }
+    push @{$oto->Image}, $image;
 
-    my $temp_merged = File::Spec->catfile ($tempdir, 'merged.oto');
-    system ('ptomerge', @ptos, $temp_merged);
-    my $temp_sorted = File::Spec->catfile ($tempdir, 'sorted.oto');
-    system ('ptosort', '--image', 'n', $temp_merged, $temp_sorted);
-    $oto->Read ($temp_sorted);
+    my $imagemetadata = new Panotools::Script::Line::ImageMetadata;
+    $imagemetadata->{cropFactor} = $photo->{exif}->{ScaleFactor35efl} || 1;
+    $imagemetadata->{autoCenterCrop} = 0 if defined $crop_s;
+    push @{$oto->ImageMetadata}, $imagemetadata;
+
+    unless ($id == 0)
+    {
+        $oto->Variable->{$id}->{r} = 1;
+        $oto->Variable->{$id}->{p} = 1;
+        $oto->Variable->{$id}->{y} = 1;
+    }
+}
+
+#TODO calculate fisheye field of view from EXIF FoV
+
+$oto->Panorama->{E} = sprintf ('%.3f', $sum_Eev / scalar @{$photos_all});
+
+$oto->UnifyLenses;
+
+$oto->LinkStacks if $linkstacks;
+
+$oto->Option->{cpgenSize} = $pix_max;
+$oto->Option->{cpgenNumber} = $points;
+$oto->Option->{cpgenRansac} = 'true';
+$oto->Option->{cpgenRansac} = 'false' if $noransac;
+$oto->Option->{cpgenRefine} = 'false';
+$oto->Option->{cpgenRefine} = 'true' if $refine;
+
+if ($photos_all->Bracketed)
+{
     $oto->Option->{outputLDRBlended} = 'false';
     $oto->Option->{outputLDRExposureBlended} = 'true';
+    $oto->Option->{outputLDRExposureLayersFused} = 'false';
 }
-
-$index = 0;
-for my $image (@{$oto->Image})
+elsif ($photos_all->Layered)
 {
-    ($image->{w}, $image->{h}) = imgsize (File::Spec->rel2abs ($ARGV[$index]));
-    $image->{S} = $crop_s if defined $crop_s;
-    # link all lens parameters
-    $image->Set (v => '=0', d => '=0', e => '=0',
-        a => '=0', b => '=0', c => '=0', g => '=0', t => '=0',
-        Ra => '=0', Rb => '=0', Rc => '=0', Rd => '=0', Re => '=0',
-        Va => '=0', Vb => '=0', Vc => '=0', Vd => '=0', Vx => '=0', Vy => '=0')
-            if ($index > 0);
-    $image->Set (v => $deg_fov, d => 0, e => 0,
-        a => 0, b => 0, c => 0, g => 0, t => 0,
-        Ra => 0, Rb => 0, Rc => 0, Rd => 0, Re => 0,
-        Va => 1, Vb => 0, Vc => 0, Vd => 0, Vx => 0, Vy => 0)
-            if ($index == 0);
-    $image->Set (f => $projection);
-    $index++;
+    $oto->Option->{outputLDRBlended} = 'false';
+    $oto->Option->{outputLDRExposureBlended} = 'false';
+    $oto->Option->{outputLDRExposureLayersFused} = 'true';
 }
-
-for my $index_meta (0 .. scalar @{$oto->Image} -1)
+else
 {
-    $oto->ImageMetadata->[$index_meta] = new Panotools::Script::Line::ImageMetadata;
-    $oto->ImageMetadata->[$index_meta]->{cropFactor} = 1;
-    $oto->ImageMetadata->[$index_meta]->{autoCenterCrop} = 0 if defined $crop_s;
+    $oto->Option->{outputLDRBlended} = 'true';
+    $oto->Option->{outputLDRExposureBlended} = 'false';
+    $oto->Option->{outputLDRExposureLayersFused} = 'false';
 }
 
-$oto->Write ($path_oto);
-
+$path_oto = $photos_all->Stub .'.pto' unless defined $path_oto;
 if ($align)
 {
-    my $tempfile = File::Spec->catfile ($tempdir, 'align.oto');
-    $oto->Write ($tempfile);
-    system ('autooptimiser', '-a', '-l', '-s', '-o', $tempfile, $tempfile);
-    system ('ptoclean', '-o', $tempfile, $tempfile);
-    system ('autooptimiser', '-n', '-l', '-o', $path_oto, $tempfile);
-    unless ($dostacks)
-    {
-         system ('ptovariable', '--vignetting', '--response', '--exposure', $path_oto);
-         system ('vig_optimize', '-o', $path_oto, $path_oto);
-    }
+    my $path_nopoints = $path_oto;
+    $path_nopoints =~ s/\.[[:alnum:]]+$//;
+    $path_nopoints .= '.pointless.pto';
+    $oto->Write ($path_nopoints);
+    system ('ptoanchor', '--output', $path_oto, $path_nopoints);
 }
-
-# voodoo
-sub from_sgraphic
+else
 {
-    my $args = shift;
-
-    my $A = $args->{rad_fov} / 2;
-    my $B = a2b ($A);
-    my $C = b2c ($B);
-
-    my $pix_w2 = $args->{pix_width} / 2;
-    my $pix_h2 = $args->{pix_height} / 2;
-
-    my $pix_dx = $args->{pix_x} - $pix_w2;
-    my $pix_dy = $args->{pix_y} - $pix_h2;
-    my $pix_b1 = dist ($pix_dx, $pix_dy);
-    return ($pix_w2, $pix_h2) if ($pix_b1 == 0);
-
-    my $b1 = ($pix_b1 / $pix_w2) * $B;
-    my $a1 = b2a ($b1);
-    my $c1 = b2c ($b1);
-    my $pix_a1 = ($a1 / $A) * $pix_w2;
-    my $pix_c1 = ($c1 / $C) * $pix_w2;
-
-    my $b1_a1 = $pix_a1 / $pix_b1;
-    my $b1_c1 = $pix_c1 / $pix_b1;
-    return (($pix_dx * $b1_a1) + $pix_w2, ($pix_dy * $b1_a1) + $pix_h2)
-        if ($args->{projection} == 2 or $args->{projection} == 3); # fisheye
-    return (($pix_dx * $b1_c1) + $pix_w2, ($pix_dy * $b1_c1) + $pix_h2)
-        if ($args->{projection} == 0); # rectilinear
-    print STDERR "Projection ". $args->{projection} ." is not azimuthal!\n";
-    return ($args->{pix_x}, $args->{pix_y});
-}
-
-sub a2b
-{
-    my $a = shift;
-    2 * tan ($a / 2);
-}
-
-sub b2a
-{
-    my $b = shift;
-    2 * atan ($b / 2);
-}
-
-sub b2c
-{
-    my $b = shift;
-    tan (2 * atan ($b / 2));
-}
-
-sub c2b
-{
-    my $c = shift;
-    2 * tan (atan ($c) / 2);
-}
-
-sub dist
-{
-    my ($x, $y) = @_;
-    sqrt (($x * $x) + ($y * $y));
+    $oto->Write ($path_oto);
 }
 
 exit 0;
@@ -415,7 +143,7 @@ __END__
 
 =head1 NAME
 
-match-n-shift - wrapper to run autopano-sift on stereographic versions of photos
+match-n-shift - generate a Hugin .pto project from a list of photos
 
 =head1 SYNOPSIS
 
@@ -424,40 +152,29 @@ match-n-shift [options] --output project.pto image1 image2 [...]
  Options:
   -o | --output name    Filename of created panorama project
   -s | --size number    Downsize images until width and height is
-                          smaller than number, default 800
+                          smaller than number, default 1600
   -p | --points number  Number of generated control points between,
-                          each pair, default: 10
+                          each pair, default: 25
   -n | --noransac       No ransac detection, useful for fisheye images
-  -m | --matchpoint     Use matchpoint from the hugin project, default
-                          is generatekeys from autopano-sift-C
   -r | --refine         Refine the found control points using the
                           original images, delete unrefinable.
-  -b | --stacks         Use align_image_stack with bracketed stacks
   -f | --projection     Panotools style input projection number. Use
-                          0 for rectilinear, 2 for circular fisheye and
-                          3 for full-frame fisheye images.
-  -v | --fov            Horizontal field of view in degrees
+                          0 for rectilinear (default), 2 for circular fisheye and
+                          3 for full-frame fisheye images.  Note, this has to be
+                          specified for fisheye lenses as this can't be determined
+                          from EXIF metadata
+  -v | --fov            Horizontal field of view in degrees, this value is
+                          only used if FoV can't be determined from EXIF
+                          metadata, defaults to 50
   -k | --selection      Crop selection boundary, eg -459,2459,-57,2861
-  -a | --align          Attempt to align images.
-  -c | --clean          Delete all temporary files afterwards.
+  -l | --linkstacks     Hard link positions of stacked photos.
+  -a | --align          Generate control points (default no).
   -h | --help           Outputs help documentation.
 
 =head1 DESCRIPTION
 
-B<match-n-shift> takes a list of image files and creates a hugin
-compatible project file containing control points linking the images together.
-
-It does this by creating scaled stereographic versions of the original photos
-and identifying control points, then takes the generated .oto file and rewrites
-the control point coordinates assuming that they are based on stereographic
-versions of the input photos, the resulting .oto file should be applicable to
-the original photos.
-
-Additionally if the --stacks option is used then align_image_stack is used to
-assemble bracketed sequences within the set, usually with less error.  For this
-to work photos need to be taken with the camera's auto-bracketing feature, e.g.
-take three different exposures, move camera, take the same three exposures,
-move camera etc...
+B<match-n-shift> takes a list of image files and creates a hugin compatible
+project file optionally containing control points linking the images together.
 
 =head1 LICENSE
 
@@ -469,7 +186,6 @@ of the License, or (at your option) any later version.
 =head1 SEE ALSO
 
 L<http://hugin.sourceforge.net/>
-L<http://cs.tu-berlin.de/~nowozin/autopano-sift/>
 
 =head1 AUTHOR
 

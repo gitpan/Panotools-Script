@@ -36,7 +36,8 @@ sub Assemble
 	    push @tokens, $entry .'='. $self->{$entry};
 	}
     }
-    return (join ' ', ($self->Identifier, @tokens)) ."\n";
+    return (join ' ', ($self->Identifier, @tokens)) ."\n" if (@tokens);
+    return '';
 }
 
 sub _defaults

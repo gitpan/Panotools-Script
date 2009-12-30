@@ -7,6 +7,12 @@ use Pod::Usage;
 
 my $help = 0;
 my $positions = 0;
+my $roll = 0;
+my $pitch = 0;
+my $yaw = 0;
+my @r;
+my @p;
+my @y;
 my $view = 0;
 my $barrel = 0;
 my $centre = 0;
@@ -17,16 +23,22 @@ my $exposure = 0;
 my $white_balance = 0;
 my $path_output;
 
-GetOptions ('p|positions' => \$positions,
-            'v|view' => \$view,
-            'b|barrel' => \$barrel,
-            'c|centre' => \$centre,
-            'p|positions' => \$positions,
-            'm|vignetting' => \$vignetting,
-            'n|vignetting-centre' => \$vignetting_centre,
-            'r|response' => \$response,
-            'e|exposure' => \$exposure,
-            'w|white-balance' => \$white_balance,
+GetOptions ('positions' => \$positions,
+            'view' => \$view,
+            'barrel' => \$barrel,
+            'centre' => \$centre,
+            'positions' => \$positions,
+            'roll' => \$roll,
+            'pitch' => \$pitch,
+            'yaw' => \$yaw,
+            'r=i' => \@r,
+            'p=i' => \@p,
+            'y=i' => \@y,
+            'vignetting' => \$vignetting,
+            'vignetting-centre' => \$vignetting_centre,
+            'response' => \$response,
+            'exposure' => \$exposure,
+            'white-balance' => \$white_balance,
             'o|output=s' => \$path_output,
             'h|help' => \$help);
 
@@ -42,40 +54,42 @@ $pto->Read ($path_pto);
 my $variable = $pto->Variable;
 
 # FIXME assumes image 0 is anchor
-my $anchor = $variable->{0};
+$variable->{0}->{v} = $view;
 
-$anchor->{v} = $view;
+$variable->{0}->{b} = $barrel;
 
-$anchor->{b} = $barrel;
+$variable->{0}->{d} = $centre;
+$variable->{0}->{e} = $centre;
 
-$anchor->{d} = $centre;
-$anchor->{e} = $centre;
+$variable->{0}->{Vb} = $vignetting;
+$variable->{0}->{Vc} = $vignetting;
+$variable->{0}->{Vd} = $vignetting;
 
-$anchor->{Vb} = $vignetting;
-$anchor->{Vc} = $vignetting;
-$anchor->{Vd} = $vignetting;
+$variable->{0}->{Vx} = $vignetting_centre;
+$variable->{0}->{Vy} = $vignetting_centre;
 
-$anchor->{Vx} = $vignetting_centre;
-$anchor->{Vy} = $vignetting_centre;
-
-$anchor->{Ra} = $response;
-$anchor->{Rb} = $response;
-$anchor->{Rc} = $response;
-$anchor->{Rd} = $response;
-$anchor->{Re} = $response;
+$variable->{0}->{Ra} = $response;
+$variable->{0}->{Rb} = $response;
+$variable->{0}->{Rc} = $response;
+$variable->{0}->{Rd} = $response;
+$variable->{0}->{Re} = $response;
 
 # FIXME assumes image 0 is anchor
 for my $index (1 .. scalar @{$pto->Image} -1)
 {
-    $variable->{$index}->{r} = $positions;
-    $variable->{$index}->{p} = $positions;
-    $variable->{$index}->{y} = $positions;
+    $variable->{$index}->{r} = $positions || $roll;
+    $variable->{$index}->{p} = $positions || $pitch;
+    $variable->{$index}->{y} = $positions || $yaw;
 
     $variable->{$index}->{Eev} = $exposure;
 
     $variable->{$index}->{Er} = $white_balance;
     $variable->{$index}->{Eb} = $white_balance;
 }
+
+$variable->{$_}->{r} = 1 for (@r);
+$variable->{$_}->{p} = 1 for (@p);
+$variable->{$_}->{y} = 1 for (@y);
 
 $pto->Write ($path_output);
 
@@ -90,15 +104,21 @@ ptovariable - prepare a pto project for typical optimisation tasks
 ptovariable [options] project.pto
 
  Options:
-  -p | --positions          Optimise positions
-  -v | --view               Optimise angle of view
-  -b | --barrel             Optimise barrel distortion
-  -c | --centre             Optimise optical centre
-  -m | --vignetting         Optimise vignetting
-  -n | --vignetting-centre  Optimise vignetting centre
-  -r | --response           Optimise camera response EMoR parameters
-  -e | --exposure           Optimise exposure (EV)
-  -w | --white-balance      Optimise colour balance
+       --positions          Optimise positions
+       --roll               Optimise roll for all images except anchor if --positions not set
+       --pitch              Optimise pitch for all images except anchor if --positions not set
+       --yaw                Optimise yaw for all images except anchor if --positions not set
+       -r <num> <num> <..>  Optimise roll for specified images
+       -p <num> <num> <..>  Optimise pitch for specified images
+       -y <num> <num> <..>  Optimise yaw for specified images
+       --view               Optimise angle of view
+       --barrel             Optimise barrel distortion
+       --centre             Optimise optical centre
+       --vignetting         Optimise vignetting
+       --vignetting-centre  Optimise vignetting centre
+       --response           Optimise camera response EMoR parameters
+       --exposure           Optimise exposure (EV)
+       --white-balance      Optimise colour balance
   -o | --output OUTFILE     Specify output file default is to overwrite input       
   -h | --help               Outputs help documentation
 
@@ -121,6 +141,10 @@ tab:
 
   ptovariable --vignetting --response --exposure project.pto
   vig_optimize -o project.pto project.pto
+
+Additionally individual parameters can be set for particular photos:
+
+  ptovariable -r 1 2 3 4 -p 4 project.pto
 
 =head1 LICENSE
 

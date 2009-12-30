@@ -25,6 +25,7 @@ Options:
    --roll     (degrees)
    --pitch    (degrees, use -90 if nadir is in centre)
    --yaw      (degrees, adjust position of first cubeface)
+   --face     (cubeface size in pixels, defaults to optimum)
 ";
 
 my $roll  = $opts->{'--roll'}  || 0;
@@ -36,7 +37,7 @@ my $ptofile = $opts->{'--ptofile'} or die $usage;
 
 my ($width, $height) = imgsize ($erect);
 
-my $face = 8 * int ($width / 3.14159265 / 8);
+my $face = $opts->{'--face'} || 8 * int ($width / 3.14159265 / 8);
 
 my $p = new Panotools::Script;
 $p->Panorama->Set (v => 90, f => 0, u => 0, w => $face, h => $face, n => "\"$filespec\"");
@@ -88,7 +89,7 @@ to the nearest multiple of 8.  Prerotate the scene with --roll,
 =head1 Calling syntax
 
   cubic2erect --erect=panorama.tif --ptofile=cube_project.pto \
-    [--roll=12] [--pitch=34] [--yaw=56] [--filespec=PNG]
+    [--roll=12] [--pitch=34] [--yaw=56] [--filespec=PNG] [--face=1024]
 
 =head1 License
 

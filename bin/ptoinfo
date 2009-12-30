@@ -19,6 +19,25 @@ for my $path_pto (@ARGV)
         print STDOUT '    '. (join ': ', @{$item}) ."\n";
     }
 
+    print STDOUT '    Number of stacks: '. scalar (@{$pto->Stacks}) ."\n";
+    for my $index (0 .. @{$pto->Stacks} -1)
+    {
+        print STDOUT "    Stack $index: ". join (', ', @{$pto->Stacks->[$index]}) ."\n";
+    }
+
+    print STDOUT '    Number of exposure layers: '. scalar (@{$pto->ExposureLayers}) ."\n";
+    for my $index (0 .. @{$pto->ExposureLayers} -1)
+    {
+        print STDOUT "    Layer $index: ". join (', ', @{$pto->ExposureLayers->[$index]}) ."\n";
+    }
+
+    my $connected_groups = $pto->ConnectedGroups;
+    print STDOUT '    Number of connected group(s): '. scalar (@{$connected_groups}) ."\n";
+    for my $index (0 .. @{$connected_groups} -1)
+    {
+        print STDOUT "    Group $index: ". join (', ', @{$connected_groups->[$index]}) ."\n";
+    }
+
     # summarise control points
     my $results = {};
     for my $control (@{$pto->Control})

@@ -19,9 +19,9 @@ my $image = $p->Image->[1];
 
 # image is 239x320
 is ($image->W2, 119.5);
-is ($image->A ($p), 0.0);
-is ($image->B ($p), -0.0258324);
-is ($image->C ($p), 0.0);
+is ($image->a ($p), 0.0);
+is ($image->b ($p), -0.0258324);
+is ($image->c ($p), 0.0);
 
 my $coor_1 = $image->_inv_radial ($p, [50,50]);
 like ($coor_1->[0], '/^49.159907/');

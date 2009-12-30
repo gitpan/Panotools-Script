@@ -27,6 +27,27 @@ sub new
 sub _defaults
 {
     my $self = shift;
+    %{$self} = 
+       (optimizeReferenceImage => 0,
+        blender => 'enblend',
+        remapper => 'nona',
+        enblendOptions => '',
+        enfuseOptions => '',
+        hdrmergeOptions => '',
+        outputLDRBlended => 'true',
+        outputLDRLayers => 'false',
+        outputLDRExposureRemapped => 'false',
+        outputLDRExposureLayers => 'false',
+        outputLDRExposureBlended => 'false',
+        outputHDRBlended => 'false',
+        outputHDRLayers => 'false',
+        outputHDRStacks => 'false',
+        outputLayersCompression => 'PACKBITS',
+        outputImageType => 'tif',
+        outputImageTypeCompression => 'NONE',
+        outputJPEGQuality => 100,
+        outputImageTypeHDR => 'exr',
+        outputImageTypeHDRCompression => '');
 }
 
 sub Identifier

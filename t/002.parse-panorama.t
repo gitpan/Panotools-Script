@@ -13,8 +13,8 @@ my $panorama = new Panotools::Script::Line::Panorama;
 is ($panorama->{w}, '1000', 'width defaults to 1000 pixels');
 is ($panorama->{h}, '500', 'height defaults to 500 pixels');
 is ($panorama->{f}, '2', 'projection defaults to equirectangular');
-is ($panorama->{v}, '360.0', 'fov defaults to 360.0 degrees');
-is ($panorama->{n}, 'JPEG', 'filetype defaults to JPEG');
+ok ($panorama->{v} == '360.0', 'fov defaults to 360.0 degrees');
+is ($panorama->{n}, '"JPEG q100"', 'filetype defaults to JPEG');
 
 $panorama->{v} = '180.0';
 is ($panorama->{v}, '180.0', 'fov is set to 180.0');

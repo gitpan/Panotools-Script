@@ -81,6 +81,7 @@ Panorama parameters are described by a 'p' line
   S100,600,100,800   Selection(left,right,top,bottom), Only pixels inside the rectangle
                      will be rendered. Images that do not contain pixels in this area
                      are not rendered/created.
+  P"0 60"      Projection parameters. e.g. Albers Equal Area Conical requires extra parameters.
 
 =cut
 
@@ -90,15 +91,16 @@ use vars qw /@ISA/;
 sub _defaults
 {
     my $self = shift;
-    $self->{w} = "1000";
-    $self->{h} = "500";
-    $self->{v} = "360.0";
-    $self->{n} = "JPEG";
-    $self->{E} = "0";
-    $self->{f} = "2";
+    $self->{w} = 1000;
+    $self->{h} = 500;
+    $self->{v} = 360.0;
+    $self->{n} = '"JPEG q100"';
+    $self->{E} = 0;
+    $self->{f} = 2;
+    $self->{R} = 0;
 }
 
-sub _valid { '^([bdfhknuvwERTS])(.*)' }
+sub _valid { '^([bdfhknuvwERTSP])(.*)' }
 
 sub Identifier
 {

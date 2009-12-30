@@ -5,10 +5,13 @@ use warnings;
 use Panotools::Script::Line;
 use Panotools::Matrix qw(matrix2rollpitchyaw rollpitchyaw2matrix multiply);
 use Math::Trig;
+use File::Spec;
 use Math::Trig ':radial';
 
 use vars qw /@ISA/;
 @ISA = qw /Panotools::Script::Line/;
+
+our $AUTOLOAD;
 
 =head1 NAME
 
@@ -62,6 +65,13 @@ Basically the same format as an 'o' line.
   Rd
   Re
 
+  TiX,TiY,TiZ  Tilt on x axis, y axis, z axis
+  TiS           Scaling of field of view in the tilt transformation
+
+  TrX,TrY,TrZ  Translation on x axis, y axis, z axis
+
+  Te0,Te1,Te2,Te3  Test parameters
+
   Vm           vignetting correction mode (default 0):
                    0: no vignetting correction
                    1: radial vignetting correction (see j,k,l,o options)
@@ -111,11 +121,12 @@ Basically the same format as an 'o' line.
 sub _defaults
 {
     my $self = shift;
+    %{$self} = (a => 0, b => 0, c => 0, d => 0, e => 0, r => 0, p => 0, y => 0);
 }
 
-sub _valid { return '^([abcdefghjnprtvwy]|[SCXYZ]|K[0-2][ab]|V[abcdfmxy]|Eev|E[rb]|R[abcde])(.*)' }
+sub _valid { return '^([abcdefghjnprtvwy]|[SCXYZ]|K[0-2][ab]|V[abcdfmxy]|Eev|E[rb]|Te[0123]|Tr[XYZ]|Ti[XYZS]|R[abcde])(.*)' }
 
-sub _valid_ptoptimizer { return '^([abcdefghnprtvwySC])(.*)' }
+sub _valid_ptoptimizer { return '^([abcdefghnprtvwySC]|Te[0123]|Tr[XYZ]|Ti[XYZS])(.*)' }
 
 sub _sanitise_ptoptimizer
 {
@@ -146,6 +157,7 @@ sub Assemble
         push @tokens, $entry . $value;
     }
     return (join ' ', ($self->Identifier, @tokens)) ."\n" if (@tokens);
+    return '';
 }
 
 =pod
@@ -207,6 +219,8 @@ sub Report
     push @report, ['Format', $format];
     push @report, ['Horizontal Field of View', $self->{v}];
     push @report, ['Roll Pitch Yaw', $self->{r} .','. $self->{p} .','. $self->{y}];
+    push @report, ['Tilt', $self->{TiX} .','. $self->{TiY} .','. $self->{TiZ} .','. $self->{TiS}] if defined $self->{TiS};
+    push @report, ['XYZ transform', $self->{TrX} .','. $self->{TrY} .','. $self->{TrZ}] if defined $self->{TrX};
     push @report, ['Lens distortion', $self->{a} .','. $self->{b} .','. $self->{c}] if defined $self->{a};
     push @report, ['Image centre', $self->{d} .','. $self->{e}] if defined $self->{d};
     push @report, ['Image shear', $self->{g} .','. $self->{t}] if defined $self->{g};
@@ -228,57 +242,52 @@ sub W2
     return ($self->{h} / 2);
 }
 
-sub V
+=pod
+
+Each image attribute (v, a, b, c etc...) can be read like so:
+
+ $fov = $i->v;
+
+Note that this will return either the value (56.7) or a reference to another
+image (=0).  If you supply a Panotools::Script object as a parameter then the
+reference will be resolved and you will always get the value:
+
+ $fov = $i->v ($pto);
+
+=cut
+
+sub AUTOLOAD
 {
     my $self = shift;
     my $pto = shift;
-    if ($self->{v} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{v}};
-    return $self->{v};
+    my $name = $AUTOLOAD;
+    $name =~ s/.*://;
+    return undef unless defined $self->{$name};
+    if ($self->{$name} =~ /^=([0-9]+)$/ and defined $pto) {return $pto->Image->[$1]->{$name}};
+    return $self->{$name};
 }
 
-sub A
-{
-    my $self = shift;
-    my $pto = shift;
-    return 0.0 unless defined ($self->{a});
-    if ($self->{a} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{a}};
-    return $self->{a};
-}
+=pod
 
-sub B
-{
-    my $self = shift;
-    my $pto = shift;
-    return 0.0 unless defined ($self->{b});
-    if ($self->{b} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{b}};
-    return $self->{b};
-}
+Get the absolute path to the image file
 
-sub C
-{
-    my $self = shift;
-    my $pto = shift;
-    return 0.0 unless defined ($self->{c});
-    if ($self->{c} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{c}};
-    return $self->{c};
-}
+$i->Path ('/path/to/project.pto');
 
-sub D
-{
-    my $self = shift;
-    my $pto = shift;
-    return 0.0 unless defined ($self->{d});
-    if ($self->{d} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{d}};
-    return $self->{d};
-}
+If a .pto project isn't specified then paths are assumed to be relatve to cwd
 
-sub E
+=cut
+
+sub Path
 {
     my $self = shift;
-    my $pto = shift;
-    return 0.0 unless defined ($self->{e});
-    if ($self->{e} =~ /^=([0-9]+)$/) {return $pto->Image->[$1]->{e}};
-    return $self->{e};
+    my $path_pto = shift;
+    my $name = $self->{n};
+    $name =~ s/^"(.*)"$/$1/;
+    return $name if File::Spec->file_name_is_absolute ($name);
+    return File::Spec->rel2abs ($name) unless defined $path_pto;
+    my ($v, $d, $f) = File::Spec->splitpath ($path_pto);
+    my $base = File::Spec->catpath ($v, $d, '');
+    return File::Spec->rel2abs ($name, $base);
 }
 
 # copied from libpano12 math.c inverse polynomial using Newton's method
@@ -287,9 +296,9 @@ sub _inv_radial
     my $self = shift;
     my $pto = shift;
     my $dest = shift;
-    my $a = $self->A ($pto);
-    my $b = $self->B ($pto);
-    my $c = $self->C ($pto);
+    my $a = $self->a ($pto);
+    my $b = $self->b ($pto);
+    my $c = $self->c ($pto);
     my $d = 1 - $a - $b - $c;
 
     my $iter = 0;
@@ -321,9 +330,9 @@ sub _radial
     my $self = shift;
     my $pto = shift;
     my $dest = shift;
-    my $a = $self->A ($pto);
-    my $b = $self->B ($pto);
-    my $c = $self->C ($pto);
+    my $a = $self->a ($pto);
+    my $b = $self->b ($pto);
+    my $c = $self->c ($pto);
     my $d = 1 - $a - $b - $c;
 
     my $r = (sqrt ($dest->[0] * $dest->[0] + $dest->[1] * $dest->[1])) / $self->W2;
@@ -345,8 +354,8 @@ sub To_Cartesian
     my $pto = shift;
     my $pix = shift;
 
-    $pix->[0] = ($self->{w}/2) - $pix->[0] + $self->D ($pto);
-    $pix->[1] = ($self->{h}/2) - $pix->[1] + $self->E ($pto);
+    $pix->[0] = ($self->{w}/2) - $pix->[0] + $self->d ($pto);
+    $pix->[1] = ($self->{h}/2) - $pix->[1] + $self->e ($pto);
     $pix = $self->_inv_radial ($pto, $pix);
 
     # FIXME returns false value for cylindrical and equirectangular images
@@ -354,13 +363,13 @@ sub To_Cartesian
 
     if ($self->{f} == 0)
     {
-        my $rad = ($self->{w}/2) / tan (deg2rad ($self->V ($pto)) / 2);
+        my $rad = ($self->{w}/2) / tan (deg2rad ($self->v ($pto)) / 2);
         $point = [[$rad], [$pix->[0]], [$pix->[1]]];
     }
     if ($self->{f} == 2 or $self->{f} == 3)
     {
         my ($rho, $theta, $z) = cartesian_to_cylindrical ($pix->[1], $pix->[0], 1);
-        my $phi = $rho * deg2rad ($self->V ($pto)) / $self->{w};
+        my $phi = $rho * deg2rad ($self->v ($pto)) / $self->{w};
         $rho = $z;
 
         ($point->[2]->[0],

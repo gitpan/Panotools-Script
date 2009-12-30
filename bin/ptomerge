@@ -10,10 +10,19 @@ my $path_out = pop @ARGV;
 my $base = new Panotools::Script;
 $base->Read ($path_base);
 
+for my $image (@{$base->Image})
+{
+    $image->{n} = '"'. $image->Path ($path_base) .'"';
+}
+
 for my $path_extra (@ARGV)
 {
     my $extra = new Panotools::Script;
     $extra->Read ($path_extra);
+    for my $image (@{$extra->Image})
+    {
+        $image->{n} = '"'. $image->Path ($path_extra) .'"';
+    }
     $base->Merge ($extra);
 }
 

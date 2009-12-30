@@ -1,5 +1,31 @@
 Revision history for Panotools::Script.
 
+0.24
+    - new tool: ptoanchor - add control points to a Hugin project
+    - new tool: ptochain - add control points to a Hugin project between consecutive photos
+    - new tool: ptobind - Join the ends of linked photos in a Hugin project
+    - new tool: ptofill - add control points to a Hugin project between likely overlapping photos
+    - new tool: pto2mk2 - Create a Makefile for stitching
+    - new tool: gigastart - assemble multi-row panoramas
+    - rewrite panostart to use ptoanchor
+    - rewrite match-n-shift to use ptoanchor
+    - rewrite ptovariable, CLI not the same
+    - bugfix: crash in Subset() when project has no image metadata
+    - bugfix: tif2svg,enblend-svg fix --jpeg-proxies option (Thomas Modes)
+    - bugfix: match-n-shift fix detection of longest exposure in bracketed sets
+    - bugfix: a full set of defaults are written to new .pto projects
+    - bugfix: support P parameter in p-lines
+    - bugfix: ptomerge fix mixing absolute and relative paths
+    - feature: match-n-shift will get FoV and Eev from EXIF data
+    - feature: panostart and match-n-shift use EXIF ExposureMode for detection of bracketed stacks
+    - feature: erect2cubic --face option to optionally specify cubeface pixel size
+    - feature: ptoinfo reports on stacks and exposure layers
+    - feature: support i-line TiX,TiY,TiZ,TiS 'tilt' and TrX,TrY,TrZ 'XYZ transform' parameters in libpano13-2.9.1
+    - factored Makefile generator to Panotools::Makefile
+    - factored EXIF handling to Panotools::Photos
+    - Panotools::Script new methods: Stacks() ExposureLayers() ConnectedGroups() Connections() UnifyLenses() LinkStacks() AngularDistance()
+    - Panotools::Script::Line::Image new accessor methods: Path(), v() a() b() etc...
+
 0.23
     - Add new projections to pod documentation and ptoinfo output
     - Add empty 'v' line to all output as panotools chokes without 'v' lines

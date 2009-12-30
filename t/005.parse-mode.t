@@ -10,7 +10,7 @@ use_ok ('Panotools::Script::Line::Mode');
 
 my $mode = new Panotools::Script::Line::Mode;
 
-is ($mode->{g}, '1.0', 'gamma defaults to 1.0');
+ok ($mode->{g} == '1.0', 'gamma defaults to 1.0');
 is ($mode->{i}, '0', 'interpolator defaults to poly3');
 
 $mode->{i} = '4';

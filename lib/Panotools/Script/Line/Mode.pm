@@ -46,8 +46,10 @@ Optional stitching modes are described by an 'm' line
 sub _defaults
 {
     my $self = shift;
-    $self->{g} = "1.0";
-    $self->{i} = "0";
+    $self->{g} = 1.0;
+    $self->{i} = 0;
+    $self->{m} = 2;
+    $self->{p} = 0.00784314;
 }
 
 sub _valid { return '^([fgimps])(.*)' }

@@ -33,10 +33,11 @@ use Panotools::Script::Line::Variable;
 
 use File::Temp qw/ tempdir /;
 use File::Spec;
+use Math::Trig qw/:radial pi great_circle_distance/;
 
 use Storable qw/ dclone /;
 
-our $VERSION = '0.23';
+our $VERSION = '0.24';
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -455,7 +456,8 @@ sub Subset
 
         # copy metadata for selected image
         $pto_out->{imagemetadata}->[$mapping->{$index}]
-            = $self->{imagemetadata}->[$index]->Clone;
+            = $self->{imagemetadata}->[$index]->Clone
+            if defined $self->{imagemetadata}->[$index];
 
         # copy selected image but resolve '=0' style references
         my $image = $self->{image}->[$index]->Clone;
@@ -566,6 +568,11 @@ sub Merge
     }
 
     $self->Duplicates;
+
+    for my $option (keys %{$b->Option})
+    {
+        $self->Option->{$option} = $b->Option->{$option} unless defined $self->Option->{$option};
+    }
 
     return 1;
 }
@@ -697,7 +704,283 @@ sub Sigma
     my $variance = $sum / scalar @{$self->Image};
     return sqrt ($variance);
 }
- 
+
+=pod
+
+Split the project into exposure stacks based in roll, pitch & yaw, or into
+exposure layers based on EV values:
+
+  $stacks = $pto->Stacks;
+  $layers = $pto->ExposureLayers;
+
+Returns a list of image number lists.
+
+e.g. extract the first stack as a new project:
+
+  $pto_stack = $pto->Subset (@{$pto->Stacks->[0]});
+
+=cut
+
+sub Stacks
+{
+    my $self = shift->Clone;
+    my $stacks = [];
+    my $maxShift = $self->Image->[0]->{v} / 10.0;
+    my @images = (0 .. scalar @{$self->Image} -1);
+    while (@images)
+    {
+        my $base_image = shift @images;
+        my $stack = [$base_image];
+        my @images_remaining = @images;
+        for my $image (@images)
+        {
+            if (_samestack ($self->{image}->[$base_image], $self->{image}->[$image], $maxShift))
+            {   
+                push @{$stack}, $image;
+                @images_remaining = grep !/^$image$/, @images_remaining;
+            }
+        }
+        @images = @images_remaining;
+        push @{$stacks}, $stack;
+    }
+    return $stacks;
+} 
+
+sub _samestack
+{
+    my ($image0, $image1, $maxShift) = @_;
+    my $minShift = 360.0 - $maxShift;
+    return 1
+        if ( (abs ($image0->{y} - $image1->{y}) < $maxShift || abs ($image0->{y} - $image1->{y}) > $minShift)
+                && abs ($image0->{p} - $image1->{p}) < $maxShift );
+    return 0;
+}
+
+=pod
+
+Split a project into exposure layers, returns a list of lists of image ids:
+
+   my $layers = $pto->ExposureLayers (1.0);
+
+Deafults to 0.5EV difference threshold.
+
+=cut
+
+sub ExposureLayers
+{
+    my $self = shift->Clone;
+    my $layers = [];
+    my $maxEVDiff = shift || 0.5;
+    my @images = (0 .. scalar @{$self->Image} -1);
+    while (@images)
+    {
+        my $base_image = shift @images;
+        my $layer = [$base_image];
+        my @images_remaining = @images;
+        for my $image (@images)
+        {
+            if (_samelayer ($self->{image}->[$base_image], $self->{image}->[$image], $maxEVDiff))
+            {   
+                push @{$layer}, $image;
+                @images_remaining = grep !/^$image$/, @images_remaining;
+            }
+        }
+        @images = @images_remaining;
+        push @{$layers}, $layer;
+    }
+    return $layers;
+} 
+
+sub _samelayer
+{
+    my ($image0, $image1, $maxEVDiff) = @_;
+    return 1 if (abs ($image0->{Eev} - $image1->{Eev}) < $maxEVDiff );
+    return 0;
+}
+
+=pod
+
+Get a list of unconnected groups, i.e. a list of image id lists:
+
+  $groups = $pto->ConnectedGroups;
+
+  warn 'just one group' if scalar @{$groups} == 1;
+
+=cut
+
+sub ConnectedGroups
+{
+    my $self = shift;
+    return [[]] unless scalar @{$self->Image};
+    my $groups = [[0]];
+    my $group_id = 0;
+
+    my @images = (1 .. scalar @{$self->Image} -1);
+    while (@images)
+    {
+        my $match = 0;
+        for my $image (@images)
+        {
+            next if $match;
+            next if grep /^$image$/, @{$groups->[$group_id]};
+            for my $base_image (@{$groups->[$group_id]})
+            {
+                next if $match;
+                if (scalar $self->Connections ($base_image, $image))
+                {
+                    push @{$groups->[$group_id]}, $image;
+                    $match = 1;
+                    @images = grep !/^$image$/, @images;
+                }
+            }
+        }
+        unless ($match)
+        {
+            $group_id++;
+            $groups->[$group_id]->[0] = shift @images;
+        }
+    }
+    return $groups;
+}
+
+=pod
+
+Count the connections between any two images:
+
+  $points = $pto->Connections (3, 5);
+
+=cut
+
+sub Connections
+{
+    my $self = shift;
+    my ($a, $b) = @_;
+
+    my $results = 0;
+    for my $control (@{$self->Control})
+    {
+        my $N = $control->{N};
+        my $n = $control->{n};
+        $results++ if (($n == $a and $N == $b) or ($n == $b and $N == $a));
+    }
+    return $results;
+}
+
+=pod
+
+Given a project with unlinked lens parameters, link them together with the same
+lens number if all distortion, and photometric parameters match:
+
+   $pto->UnifyLenses;
+
+=cut
+
+sub UnifyLenses
+{
+    my $self = shift;
+    for my $id (1 .. scalar @{$self->Image} -1)
+    {
+        my $img = $self->Image->[$id];
+        for my $base_id (0 .. $id -1)
+        {
+            my $base_img = $self->Image->[$base_id];
+            if ($img->v ($self) eq $base_img->{v}
+            and $img->a ($self) eq $base_img->{a}
+            and $img->b ($self) eq $base_img->{b}
+            and $img->c ($self) eq $base_img->{c}
+            and $img->d ($self) eq $base_img->{d}
+            and $img->e ($self) eq $base_img->{e}
+            and $img->Ra ($self) eq $base_img->{Ra}
+            and $img->Rb ($self) eq $base_img->{Rb}
+            and $img->Rc ($self) eq $base_img->{Rc}
+            and $img->Rd ($self) eq $base_img->{Rd}
+            and $img->Re ($self) eq $base_img->{Re}
+            and $img->Va ($self) eq $base_img->{Va}
+            and $img->Vb ($self) eq $base_img->{Vb}
+            and $img->Vc ($self) eq $base_img->{Vc}
+            and $img->Vd ($self) eq $base_img->{Vd}
+            and $img->Vx ($self) eq $base_img->{Vx}
+            and $img->Vy ($self) eq $base_img->{Vy}
+            )
+            {
+                $img->{v} = "=$base_id";
+                $img->{a} = "=$base_id";
+                $img->{b} = "=$base_id";
+                $img->{c} = "=$base_id";
+                $img->{d} = "=$base_id";
+                $img->{e} = "=$base_id";
+                $img->{Ra} = "=$base_id";
+                $img->{Rb} = "=$base_id";
+                $img->{Rc} = "=$base_id";
+                $img->{Rd} = "=$base_id";
+                $img->{Re} = "=$base_id";
+                $img->{Va} = "=$base_id";
+                $img->{Vb} = "=$base_id";
+                $img->{Vc} = "=$base_id";
+                $img->{Vd} = "=$base_id";
+                $img->{Vx} = "=$base_id";
+                $img->{Vy} = "=$base_id";
+                next;
+            }
+        }
+    }
+}
+
+=pod
+
+Given a project with stacks indicated by 'j' parameters, hard-link the
+positions (only recognised by Hugin with layout mode code).
+
+   $pto->LinkStacks;
+
+=cut
+
+sub LinkStacks
+{
+    my $self = shift;
+    for my $id (1 .. scalar @{$self->Image} -1)
+    {
+        my $img = $self->Image->[$id];
+        my $found;
+        for my $base_id (0 .. $id -1)
+        {
+            next if $found;
+            my $base_img = $self->Image->[$base_id];
+            next unless defined $img->{j};
+            if ($img->{j} eq $base_img->{j})
+            {
+                $img->{r} = "=$base_id";
+                $img->{p} = "=$base_id";
+                $img->{y} = "=$base_id";
+                $found = 1;
+                next;
+            }
+        }
+    }
+}
+
+=pod
+
+Return the angular distance in degrees between two images:
+
+  $deg = $pto->AngularDistance (3, 5);
+
+=cut
+
+sub AngularDistance
+{
+    my $self = shift;
+    return undef unless ($_[0] =~ /^[0-9]+$/ and $_[1] =~ /^[0-9]+$/);
+    my $yaw_a = $self->Image->[$_[0]]->y ($self);
+    my $pitch_a = $self->Image->[$_[0]]->p ($self);
+    my $yaw_b = $self->Image->[$_[1]]->y ($self);
+    my $pitch_b = $self->Image->[$_[1]]->p ($self);
+    my $distance = great_circle_distance ($yaw_a * pi/180, pi/2 - ($pitch_a * pi/180),
+                                              $yaw_b * pi/180, pi/2 - ($pitch_b * pi/180));
+    return $distance * 180/pi;
+}
+
+
 =head1 COPYRIGHT
 
 Copyright (c) 2001 Bruno Postle <bruno@postle.net>. All Rights Reserved.
