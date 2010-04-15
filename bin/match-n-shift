@@ -49,6 +49,8 @@ $deg_fov =~ s/,.*//;
 
 my $oto = new Panotools::Script;
 
+my @AverageRGB = $photos_all->AverageRGB;
+
 my $sum_Eev;
 for my $id (0 .. scalar @ARGV -1)
 {
@@ -69,6 +71,8 @@ for my $id (0 .. scalar @ARGV -1)
     $image->{n} = '"'. $image->Path .'"';
     $image->{S} = $crop_s if defined $crop_s;
     $sum_Eev += $photos_all->Eev ($id);
+    $image->{Er} = $photo->{exif}->{RedBalance} / $AverageRGB[0] if $photo->{exif}->{RedBalance};
+    $image->{Eb} = $photo->{exif}->{BlueBalance} / $AverageRGB[2] if $photo->{exif}->{BlueBalance};
 
     if ($photos_all->Bracketed)
     {
@@ -92,6 +96,9 @@ for my $id (0 .. scalar @ARGV -1)
 #TODO calculate fisheye field of view from EXIF FoV
 
 $oto->Panorama->{E} = sprintf ('%.3f', $sum_Eev / scalar @{$photos_all});
+
+$oto->Panorama->{w} = $oto->OptimalWidth (0.7);
+$oto->Panorama->{h} = $oto->Panorama->{w} / 2;
 
 $oto->UnifyLenses;
 

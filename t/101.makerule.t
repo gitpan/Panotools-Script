@@ -71,7 +71,7 @@ for my $file ('foo',
 'foo"bar'
 )
 {
-    ok (testfilename ($file));
+    ok (testfilename ($file), $file);
 }
 
 # Should be ok, but need different tests
@@ -111,7 +111,9 @@ sub testfilename
     print MAKE $rule->Assemble;
     close MAKE;
     chdir $tempdir;
-    system ('make');
+    my $make_exe = 'make';
+    $make_exe = 'gmake' if ($^O =~ /bsd$/);
+    system ($make_exe);
     return 1 if -e $filename_out;
     print $rule->Assemble;
     return 0;

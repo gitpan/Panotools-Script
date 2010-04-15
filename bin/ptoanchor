@@ -173,9 +173,11 @@ if (scalar keys %{$tmp})
     $rule->Command ('$(PTOMERGE_SHELL)', '$(PROJECT_FILE_SHELL)',
                         '$(LAYERS_SHELL)', '$(STACKS_SHELL)', '$(MERGED_A_SHELL)');
 
+    # FIXME -n and just positions should be optimised for single stacks
     my @autooptimiser_args;
     @autooptimiser_args = ('-l') if (scalar @{$stacks} > 1);
 
+    # FIXME -a optimises b, d and e for single stacks, bad
     $rule = $mk->Rule ('$(MERGED_B)');
     $rule->Prerequisites ('$(MERGED_A)');
     $rule->Command ('$(AUTOOPTIMISER_SHELL)', @autooptimiser_args, '-a', '-s',

@@ -1,5 +1,19 @@
 Revision history for Panotools::Script.
 
+0.25
+    - Image Radius() method and Panotools::Script OptimalWidth() method
+    - match-n-shift calculate panorama pixel size
+    - match-n-shift populate white balance from EXIF data
+    - gigastart 'images' target
+    - ptofill: --ignoregroups option to force matching between unconnected groups
+    - new tool: entile - splits images to google-maps style tiles
+    - new tool: gmaptemplate - HTML template for viewing tiled images with Google Maps API
+    - new tool: gigatile - crude stitching for very large panoramas
+    - new tool: lens-submit - collect lens and EXIF data
+    - remove GraphViz build dependency as ptograph is superceded by Hugin layout mode
+    - bugfix: pafextract was miscalculating FoV (Pablo d'Angelo)
+    - Support new Mask 'k' line
+
 0.24
     - new tool: ptoanchor - add control points to a Hugin project
     - new tool: ptochain - add control points to a Hugin project between consecutive photos

@@ -83,6 +83,18 @@ for my $path_pto (@ARGV)
         {
             print STDOUT "    Connections to image $key: ". $results->{$key} ."\n";
         }
+        # summarise masks for this image
+        my $id_mask = 0;
+        for my $mask (@{$pto->Mask})
+        {
+            next unless $mask->{i} == $index;
+            print STDOUT '    Mask: '. $id_mask ."\n";
+            for my $item (@{$mask->Report})
+            {
+                print STDOUT '        '. (join ': ', @{$item}) ."\n";
+            }
+            $id_mask++;
+        }
     }
 }
 

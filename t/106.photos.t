@@ -77,3 +77,15 @@ ok (Panotools::Photos::_longer (4, '1/2'));
 ok (Panotools::Photos::_longer ('1/4', '1/200'));
 ok (Panotools::Photos::_longer (4, 0));
 ok (Panotools::Photos::_longer ('1/4', 0));
+
+is ((join ':', $photos->AverageRGB), '1:1:1');
+
+$photos->[0]->{exif}->{RedBalance} = 2;
+$photos->[1]->{exif}->{RedBalance} = 4;
+is ((join ':', $photos->AverageRGB), '1:1:1');
+$photos->[0]->{exif}->{GreenBalance} = 2;
+$photos->[1]->{exif}->{GreenBalance} = 2;
+$photos->[0]->{exif}->{BlueBalance} = 2;
+$photos->[1]->{exif}->{BlueBalance} = 2;
+
+is ((join ':', $photos->AverageRGB), '3:2:2');

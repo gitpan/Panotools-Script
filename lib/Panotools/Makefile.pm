@@ -14,6 +14,10 @@ Writing Makefiles directly from perl scripts with print and "\t" etc... is
 prone to error, this library provides a simple perl interface for assembling
 Makefiles.
 
+Note GNU make syntax is assumed, i.e. on BSD systems where pmake is the default
+you will have to switch to gmake if you want to work with weirdly named targets
+containing special characters such as spaces or parentheses.
+
 =cut
 
 use strict;
@@ -50,7 +54,7 @@ Start adding items to the Makefile:
 
 Rule() returns a new L<Panotools::Makefile::Rule> object, Variable() returns a
 new L<Panotools::Makefile::Variable> object and Comment() returns a new
-L<Panotools::Makefike::Variable> object:
+L<Panotools::Makefile::Comment> object:
 
   my $var_user = $makefile->Variable ('USER');
   $var_user->Values ("Dr. Largio d'Apalansius (MB)");
@@ -91,7 +95,22 @@ sub Comment
 
 =pod
 
-Write the Makefile:
+Assemble all this into string that can be written to a Makefile:
+
+  my $string = $makefile->Assemble;
+
+=cut
+
+sub Assemble
+{
+    my $self = shift;
+    "# Created by Panotools::Script $Panotools::Script::VERSION\n\n"
+      . join '', map {$_->Assemble} @{$self->{items}};
+}
+
+=pod
+
+..or write the Makefile:
 
   $makefile->Write ('/path/to/Makefile');
 
@@ -102,8 +121,7 @@ sub Write
     my $self = shift;
     my $path_makefile = shift;
     open MAKE, ">", $path_makefile or warn "cannot write-open $path_makefile";
-    print MAKE "# Created by Panotools::Script $Panotools::Script::VERSION\n\n";
-    print MAKE map {$_->Assemble} @{$self->{items}};
+    print MAKE $self->Assemble;
     close MAKE;
 }
 
@@ -130,7 +148,9 @@ sub DoIt
     my $tempdir = tempdir (CLEANUP => 1);
     my $path_makefile = File::Spec->catfile ($tempdir, 'Makefile');
     $self->Write ($path_makefile);
-    system ('make', '-f', $path_makefile, @_);
+    my $make_exe = 'make';
+    $make_exe = 'gmake' if ($^O =~ /bsd$/);
+    system ($make_exe, '-f', $path_makefile, @_);
     return 1 if ($? == 0);
     return 0;
 }

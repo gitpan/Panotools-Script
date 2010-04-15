@@ -15,6 +15,8 @@ erect2mercator
 erect2planet
 erect2qtvr
 gigastart
+gigatile
+gmaptemplate
 jpeg2qtvr
 match-n-shift
 nona-mask

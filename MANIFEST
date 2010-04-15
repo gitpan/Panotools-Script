@@ -3,13 +3,17 @@ bin/enblend-mask
 bin/enblend-svg
 bin/enblend-svg-gui
 bin/enfuse-mask
+bin/entile
 bin/erect2cubic
 bin/erect2mercator
 bin/erect2planet
 bin/erect2qtvr
 bin/erect2qtvr-gui
 bin/gigastart
+bin/gigatile
+bin/gmaptemplate
 bin/jpeg2qtvr
+bin/lens-submit
 bin/match-n-shift
 bin/nona-mask
 bin/pafextract
@@ -65,6 +69,7 @@ lib/Panotools/Script/Line/Control.pm
 lib/Panotools/Script/Line/ControlMorph.pm
 lib/Panotools/Script/Line/Image.pm
 lib/Panotools/Script/Line/ImageMetadata.pm
+lib/Panotools/Script/Line/Mask.pm
 lib/Panotools/Script/Line/Mode.pm
 lib/Panotools/Script/Line/Option.pm
 lib/Panotools/Script/Line/Output.pm
@@ -85,6 +90,7 @@ t/011.read-optimise.t
 t/012.read-pto.t
 t/020.create-script.t
 t/021.morph.t
+t/022.mask.t
 t/031.matrix.t
 t/032.image.t
 t/033.points.t

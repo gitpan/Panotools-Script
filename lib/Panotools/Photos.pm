@@ -311,4 +311,23 @@ sub Eev
     return sprintf ('%.3f', (2*log ($aperture) - log($et) - log($iso/100)) / log(2));
 }
 
+sub AverageRGB
+{
+    my $self = shift;
+    my $RedBalance = 0;
+    my $GreenBalance = 0;
+    my $BlueBalance = 0;
+    my $count = 0;
+    for my $image (@{$self})
+    {
+        next unless ($image->{exif}->{'RedBalance'} and $image->{exif}->{'BlueBalance'});
+        $RedBalance   += $image->{exif}->{'RedBalance'};
+        $GreenBalance += $image->{exif}->{'GreenBalance'} if defined $image->{exif}->{'GreenBalance'};
+        $BlueBalance  += $image->{exif}->{'BlueBalance'};
+        $count++;
+    }
+    return (1,1,1) unless $count;
+    return ($RedBalance / $count, $GreenBalance / $count, $BlueBalance / $count);
+}
+
 1;

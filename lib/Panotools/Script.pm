@@ -30,6 +30,8 @@ use Panotools::Script::Line::Output;
 use Panotools::Script::Line::Control;
 use Panotools::Script::Line::ControlMorph;
 use Panotools::Script::Line::Variable;
+use Panotools::Script::Line::Mask;
+use Digest::MD5 'md5_hex';
 
 use File::Temp qw/ tempdir /;
 use File::Spec;
@@ -37,7 +39,7 @@ use Math::Trig qw/:radial pi great_circle_distance/;
 
 use Storable qw/ dclone /;
 
-our $VERSION = '0.24';
+our $VERSION = '0.25';
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -69,6 +71,7 @@ sub _defaults
     $self->{output} = [];
     $self->{control} = [];
     $self->{controlmorph} = [];
+    $self->{mask} = [];
 }
 
 =pod
@@ -92,6 +95,8 @@ sub Read
     }
     my @raw = <FILE>;
     close FILE;
+
+    $self->{md5} = md5_hex (join '', @raw);
 
     my ($volume, $directories, $file) = File::Spec->splitpath ($path);
 
@@ -132,6 +137,12 @@ sub Read
             my $imagemeta = new Panotools::Script::Line::ImageMetadata;
             $imagemeta->Parse ($line);
             push @{$self->ImageMetadata}, $imagemeta;
+        }
+        if ($line =~ /^k /)
+        {
+            my $mask = new Panotools::Script::Line::Mask;
+            $mask->Parse ($line);
+            push @{$self->Mask}, $mask;
         }
     }
     $self->Output2Image;
@@ -183,6 +194,11 @@ sub Write
     for my $controlmorph (@{$self->ControlMorph})
     {
          print FILE $controlmorph->Assemble;
+    }
+    print FILE "\n# Mask lines\n";
+    for my $mask (@{$self->Mask})
+    {
+         print FILE $mask->Assemble;
     }
     print FILE "\n# option lines\n";
     print FILE $self->Option->Assemble;
@@ -281,6 +297,12 @@ sub ControlMorph
 {
     my $self = shift;
     $self->{controlmorph};
+}
+
+sub Mask
+{
+    my $self = shift;
+    $self->{mask};
 }
 
 =pod
@@ -496,6 +518,16 @@ sub Subset
         push @{$pto_out->{control}}, $clone;
     }
 
+    # copy masks for selected images
+    $pto_out->{mask} = [];
+    for my $mask (@{$self->{mask}})
+    {
+        next unless defined $mapping->{$mask->{i}};
+        my $clone = $mask->Clone;
+        $clone->{i} = $mapping->{$mask->{i}};
+        push @{$pto_out->{mask}}, $clone;
+    }
+
     return $pto_out;
 }
 
@@ -565,6 +597,20 @@ sub Merge
         $clone->{n} = $mapping->{$b->Image->[$clone->{n}]->{n}};
         $clone->{N} = $mapping->{$b->Image->[$clone->{N}]->{n}};
         push @{$self->Control}, $clone;
+    }
+
+    # add masks
+    for my $mask (@{$b->Mask})
+    {
+        my $jump;
+        for my $self_mask (@{$self->Mask})
+        {
+            $jump = 1 if ($self_mask->{i} eq $mask->{i} and $self_mask->{p} eq $mask->{p});
+        }
+        next if $jump;
+        my $clone = $mask->Clone;
+        $clone->{i} = $mapping->{$b->Image->[$clone->{i}]->{n}};
+        push @{$self->Mask}, $clone;
     }
 
     $self->Duplicates;
@@ -978,6 +1024,42 @@ sub AngularDistance
     my $distance = great_circle_distance ($yaw_a * pi/180, pi/2 - ($pitch_a * pi/180),
                                               $yaw_b * pi/180, pi/2 - ($pitch_b * pi/180));
     return $distance * 180/pi;
+}
+
+=pod
+
+Look at all photos and calculate an optimal pixel width for this panorama,
+optionally supply a scaling factor:
+
+   $width = $pto->OptimalWidth (0.7);
+
+This number is rounded up to the nearest multiple of 16 pixels.
+
+=cut
+
+sub OptimalWidth
+{
+    my $self = shift;
+    my $factor = shift || 1;
+    my $pix_radius_max = 1;
+    for (@{$self->Image})
+    {
+        my $pix_radius = $_->Radius ($self);
+        $pix_radius_max = $pix_radius if $pix_radius > $pix_radius_max;
+    }
+    my $pix_width;
+    my $rad_fov = Math::Trig::deg2rad ($self->Panorama->{v});
+    $rad_fov = 2 * Math::Trig::pi() if $rad_fov == 0;
+    if ($self->Panorama->{f} == 0)
+    {
+        return $self->Panorama->{w} if $self->Panorama->{v} >= 180;
+        $pix_width = 2 * $pix_radius_max * Math::Trig::tan ($rad_fov/2); 
+    }
+    else
+    {
+        $pix_width = $pix_radius_max * $rad_fov;
+    }
+    return int (($pix_width * $factor / 16) +1) * 16;
 }
 
 

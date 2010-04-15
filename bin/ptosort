@@ -193,6 +193,12 @@ for my $index ( 0 .. scalar @{$sorted_pto->Control} - 1 )
     $cp->{N} = $mapping->{$cp->{N}};
 }
 
+for my $index ( 0 .. scalar @{$sorted_pto->Mask} - 1 )
+{
+    my $mask = $sorted_pto->Mask->[$index];
+    $mask->{i} = $mapping->{$mask->{i}};
+}
+
 # change controlmorph points
 for my $index ( 0 .. scalar @{$sorted_pto->ControlMorph} - 1 )
 {

@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Panotools-Script
-version:      0.24
+version:      0.25
 version_from: lib/Panotools/Script.pm
 installdirs:  site
 requires:
@@ -11,13 +11,14 @@ requires:
     File::Temp:                    0.1
     Getopt::Long:                  2
     Getopt::Std:                   1
-    GraphViz:                      1
     Image::ExifTool:               6
     Image::Size:                   2.9
+    LWP::UserAgent:                0
     Math::Trig:                    0.1
     Pod::Usage:                    1
     Storable:                      2
     Test::More:                    0.1
+    URI:                           0
 
 distribution_type: module
 generated_by: ExtUtils::MakeMaker version 6.17

@@ -37,7 +37,8 @@ my $rad_vfov = $paf->{'Initial FOV'} * atan2(0,-1) / 180;
 my $px_height = int (tan ($rad_vfov/2) * $px_radius_equirect * 2);
 my $px_width = int ($px_height * 4/3);
 
-my $rad_hfov = 2 * asin (sin ($rad_vfov/2) * $px_width / $px_height);
+my $focal_length = $px_height / (2*tan($rad_vfov/2));
+my $rad_hfov = 2 * atan( $px_width / (2.0 * $focal_length));
 
 # create a .pto project to extract the rectilinear view stored in the .paf file
 my $pto_extract = new Panotools::Script;

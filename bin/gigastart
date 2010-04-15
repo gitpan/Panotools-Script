@@ -23,7 +23,7 @@ pod2usage (2) unless scalar @ARGV > 1;
 $path_makefile = 'Makefile' unless defined $path_makefile;
 
 my $rule = $mk->Rule ('.PHONY');
-$rule->Prerequisites (qw/all pointless chained bound filled cleaned pto clean/);
+$rule->Prerequisites (qw/all pointless chained bound filled cleaned pto images clean/);
 
 $rule = $mk->Rule ('all');
 $rule->Prerequisites ('pto');
@@ -62,6 +62,8 @@ $rule = $mk->Rule ('cleaned');
 $rule->Prerequisites ('$(PREFIX).cleaned.pto');
 $rule = $mk->Rule ('pto');
 $rule->Prerequisites ('$(PREFIX).pto');
+$rule = $mk->Rule ('images');
+$rule->Prerequisites ('$(PREFIX).tif');
 
 $mk->Comment ('Create a pointless project file from a list of photos');
 $rule = $mk->Rule ('$(PREFIX).pointless.pto');

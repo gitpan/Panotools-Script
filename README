@@ -21,8 +21,10 @@ Dependencies
 ------------
 
 Image::Size
+Image::ExifTool
+Test::More
 
-Some of the scripts require 'nona', 'freepv', 'enblend', 'autotrace' and
+Some of the scripts require 'nona', 'freepv', 'enblend', 'enfuse', 'autotrace' and
 ImageMagick command-line tools.
 
 The various *-gui tools require 'zenity' and will only work on

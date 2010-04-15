@@ -9,11 +9,13 @@ use Panotools::Script;
 
 my $path_output;
 my $path_mk;
+my $ignoregroups;
 my $factor = 1.25;
 my $help = 0;
 
 GetOptions ('o|output=s' => \$path_output,
             'm|makefile=s' => \$path_mk,
+            'ignoregroups' => \$ignoregroups,
             'f|factor=s' => \$factor,
             'h|help' => \$help);
 
@@ -74,12 +76,24 @@ my $var_links = $mk->Variable ('LINK_PTOS');
 
 my $keys = {};
 
+# a group of all photos
+my $groups = [[0 .. scalar (@{$pto->Image}) -1]];
+$groups = $pto->ConnectedGroups unless $ignoregroups;
+
 $mk->Comment ('Rules to match points between nearby photos');
 for my $id_image_a (1 .. scalar @{$pto->Image} -1)
 {
     for my $id_image_b (0 .. $id_image_a -1)
     {
         next if $pto->Connections ($id_image_a, $id_image_b);
+
+        my $samegroup = 0;
+        for my $group (@{$groups})
+        {
+            $samegroup = 1 if (grep (/^$id_image_a$/, @{$group})
+                                 and grep (/^$id_image_b$/, @{$group}));
+        }
+        next unless $samegroup;
 
         # 'average' field of view of this pair of photos
         my $image_a = $pto->Image->[$id_image_a];
@@ -159,6 +173,7 @@ ptofill [options] --output output.pto input.pto
  Options:
   -m | --makefile file  Output Makefile
   -o | --output file    Output project
+       --ignoregroups   Match photos even between unconnected groups
   -f | --factor         Distance factor to search for overlaps (default=1.25)
   -h | --help           Outputs help documentation.
 
@@ -170,6 +185,9 @@ Output is in the form of a .pto project.
 All pairs of photos in a project are examined and angular distances compared to
 determine if photos likely overlap, if points already exist between photos then
 matching will be skipped.
+
+Matching will also be skipped between photos that are not in the same
+'connected group' unless the --ignoregroups option is specified.
 
 If the --makefile option is given, rules for generating the project are written
 to a Makefile, if --makefile isn't set then these rules will be executed

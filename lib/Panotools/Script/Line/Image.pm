@@ -346,6 +346,9 @@ sub _radial
 For any given coordinate in this image (top left is 0,0), calculate an x,y,z
 cartesian coordinate, accounting for lens distortion, projection and rotation.
 
+  $coor = $i->To_Cartesian ($pto, [23,45]);
+  ($x, $y, $z) = @{$coor};
+
 =cut
 
 sub To_Cartesian
@@ -382,6 +385,34 @@ sub To_Cartesian
                    (deg2rad ($self->{r}), deg2rad ($self->{p}), deg2rad ($self->{y}));
 
     multiply ($matrix, $point);
+}
+
+=pod
+
+Query distance (radius) to photo in pixels:
+
+  $pix_radius = $i->Radius ($pto);
+
+=cut
+
+sub Radius
+{
+    my $self = shift;
+    my $pto = shift;
+
+    my $rad_fov = deg2rad ($self->v ($pto));
+    return 0 unless $rad_fov;
+
+    my $pix_radius;
+    if ($self->{f} == 0)
+    {
+        $pix_radius = ($self->{w}/2) / tan ($rad_fov/2);
+    }
+    else
+    {
+        $pix_radius = $self->{w} / $rad_fov;
+    }
+    return $pix_radius;
 }
 
 1;
