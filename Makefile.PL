@@ -4,8 +4,8 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'              => 'Panotools::Script',
     'EXE_FILES'         => [ 'bin/cubic2erect', 'bin/erect2cubic', 'bin/pafextract', 'bin/pto2mk2',
-        'bin/jpeg2qtvr', 'bin/erect2qtvr', 'bin/enblend-mask', 'bin/match-n-shift', 'bin/ptoset',
-        'bin/process-masks', 'bin/erect2planet', 'bin/ptograph', 'bin/ptoget', 'bin/enfuse-mask',
+        'bin/jpeg2qtvr', 'bin/erect2qtvr', 'bin/enblend-mask', 'bin/match-n-shift', 'bin/ptoset', 'bin/ptodouble',
+        'bin/process-masks', 'bin/erect2planet', 'bin/ptograph', 'bin/ptoget', 'bin/enfuse-mask', 'bin/ptohalve',
         'bin/ptochain', 'bin/ptobind', 'bin/ptofill', 'bin/gigastart', 'bin/entile', 'bin/gigatile',
         'bin/tif2svg', 'bin/enblend-svg', 'bin/ptoinfo', 'bin/ptopath', 'bin/ptodummy', 'bin/ptoanchor',
         'bin/qtvr2erect-gui', 'bin/tif2svg-gui', 'bin/ptoinfo-gui', 'bin/ptosort', 'bin/ptovariable',

@@ -174,13 +174,13 @@ sub Transform
     my ($roll, $pitch, $yaw) = @_;
     my @transform_rpy = map (deg2rad ($_), ($roll, $pitch, $yaw));
     my $transform_matrix = rollpitchyaw2matrix (@transform_rpy);
-    my @rpy = map (deg2rad ($_), ($self->{r}, $self->{p}, $self->{y}));
+    my @rpy = map (deg2rad ($_), ($self->r, $self->p, $self->y));
     my $matrix = rollpitchyaw2matrix (@rpy);
     my $result = multiply ($transform_matrix, $matrix);
     my ($r, $p, $y) = map (rad2deg ($_), matrix2rollpitchyaw ($result));
-    $self->{r} = $r;
-    $self->{p} = $p;
-    $self->{y} = $y;
+    $self->{r} = $r unless $self->{r} =~ /=/;
+    $self->{p} = $p unless $self->{p} =~ /=/;
+    $self->{y} = $y unless $self->{y} =~ /=/;
 }
 
 sub _prepend
@@ -382,7 +382,7 @@ sub To_Cartesian
     }
 
     my $matrix = rollpitchyaw2matrix
-                   (deg2rad ($self->{r}), deg2rad ($self->{p}), deg2rad ($self->{y}));
+                   (deg2rad ($self->r), deg2rad ($self->p), deg2rad ($self->y));
 
     multiply ($matrix, $point);
 }

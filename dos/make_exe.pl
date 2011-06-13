@@ -29,10 +29,12 @@ ptobind
 ptocentre
 ptochain
 ptoclean
+ptodouble
 ptodummy
 ptofill
 ptoget
 ptograph
+ptohalve
 ptoinfo
 ptomerge
 ptopath

@@ -51,6 +51,11 @@ is ((join ':', @{$photos->Speeds}), '2:1/2:1/4');
 ok ($photos->Bracketed == 1);
 ok ($photos->Layered == 0);
 
+# http://www.cpantesters.org/cpan/report/6a000430-b5c0-11df-af27-ffdf23310e15
+ok (Panotools::Photos::_longer ('2', '1/4'), '_longer');
+ok (Panotools::Photos::_longer ('1/2', '1/4'), '_longer');
+ok (Panotools::Photos::_longer ('2', '1/2'), '_longer');
+
 # sequences have to be in strict order
 $photos->[6] = {path => 'IMG_0007.JPG', exif => {ExposureTime => '1/4'}};
 $photos->[7] = {path => 'IMG_0008.JPG', exif => {ExposureTime => '1/2'}};

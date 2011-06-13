@@ -24,7 +24,7 @@ $p->Control->[0]->Set (N => 0, n => 1, X => 100, Y => 0, x => 0, y => 0);
 $p->Control->[1] = new Panotools::Script::Line::Control;
 $p->Control->[1]->Set (N => 0, n => 1, X => 50, Y => 50, x => 50, y => 50);
 
-is ($p->Control->[0]->Distance ($p), 0, 'points are 0 pixel distance');
+ok ($p->Control->[0]->Distance ($p) < 0.00001, 'points are 0 pixel distance');
 is ($p->Control->[1]->Distance ($p), 250, 'points are 250 pixel distance');
 
 $p->Transform (10,20,30);

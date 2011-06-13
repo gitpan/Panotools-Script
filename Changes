@@ -1,5 +1,13 @@
 Revision history for Panotools::Script.
 
+0.26
+    - ptoanchor now uses cpfind instead of autopano-sift-c, requires Hugin 2010.4.0
+    - Panotools::Makefile fixes for irix/solaris
+    - tests: workaround math on Darwin
+    - tests: Use 'copy' instead of 'cp' on windows when running tests
+    - new tools: ptohalve and ptodouble - resizes pto project files
+    - fix Transform() and other potential bugs with linked stacks
+
 0.25
     - Image Radius() method and Panotools::Script OptimalWidth() method
     - match-n-shift calculate panorama pixel size

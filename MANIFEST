@@ -26,10 +26,12 @@ bin/ptobind
 bin/ptocentre
 bin/ptochain
 bin/ptoclean
+bin/ptodouble
 bin/ptodummy
 bin/ptofill
 bin/ptoget
 bin/ptograph
+bin/ptohalve
 bin/ptoinfo
 bin/ptoinfo-gui
 bin/ptomerge

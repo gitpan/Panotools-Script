@@ -32,8 +32,7 @@ $mk->Comment ('Command-line tools');
 $mk->Variable ('PTOSPLIT', 'ptosplit');
 $mk->Variable ('PTOMERGE', 'ptomerge');
 $mk->Variable ('PTOVARIABLE', 'ptovariable');
-$mk->Variable ('APSC', 'autopano-sift-c');
-$mk->Variable ('CELESTE', '-', 'celeste_standalone');
+$mk->Variable ('CPFIND', 'cpfind');
 $mk->Variable ('CPCLEAN', 'cpclean');
 $mk->Variable ('ALIGNIMAGESTACK', 'align_image_stack');
 $mk->Variable ('AUTOOPTIMISER', 'autooptimiser');
@@ -95,13 +94,10 @@ if (scalar keys %{$tmp})
         $var_layer_a->Values ('$(PREFIX)_layer_'. $id_el .'.a.pto');
         my $var_layer_b = $mk->Variable ('LAYER_'. $id_el .'_B');
         $var_layer_b->Values ('$(PREFIX)_layer_'. $id_el .'.b.pto');
-        my $var_layer_c = $mk->Variable ('LAYER_'. $id_el .'_C');
-        $var_layer_c->Values ('$(PREFIX)_layer_'. $id_el .'.c.pto');
         my $var_layer_d = $mk->Variable ('LAYER_'. $id_el .'_D');
         $var_layer_d->Values ('$(PREFIX)_layer_'. $id_el .'.d.pto');
 
-        $var_tempfiles->Values ($var_layer_a->NameRef, $var_layer_b->NameRef,
-                                    $var_layer_c->NameRef, $var_layer_d->NameRef);
+        $var_tempfiles->Values ($var_layer_a->NameRef, $var_layer_b->NameRef, $var_layer_d->NameRef);
 
         $mk->Comment ('Input photos for this layer');
         my $var_layer_input = $mk->Variable ('LAYER_'. $id_el .'_INPUT');
@@ -115,18 +111,12 @@ if (scalar keys %{$tmp})
 
         $rule = $mk->Rule ($var_layer_b->NameRef);
         $rule->Prerequisites ($var_layer_a->NameRef, $var_layer_input->NameRef);
-        $rule->Command ('$(APSC_SHELL)', '--maxdim', $pix_max, @refine, '--ransac', $ransac,
-                '--maxmatches', $points, $var_layer_b->NameRefShell, $var_layer_a->NameRefShell);
-
-        $rule = $mk->Rule ($var_layer_c->NameRef);
-        $rule->Prerequisites ($var_layer_b->NameRef, $var_layer_input->NameRef);
-        $rule->Command ('$(CELESTE_SHELL)', '-i', $var_layer_b->NameRefShell,
-                            '-o', $var_layer_c->NameRefShell);
+        $rule->Command ('$(CPFIND_SHELL)', '--celeste', '-o', $var_layer_b->NameRefShell, $var_layer_a->NameRefShell);
 
         $rule = $mk->Rule ($var_layer_d->NameRef);
-        $rule->Prerequisites ($var_layer_c->NameRef);
+        $rule->Prerequisites ($var_layer_b->NameRef);
         $rule->Command ('$(CPCLEAN_SHELL)', '-n', 1.5,
-                            '-o', $var_layer_d->NameRefShell, $var_layer_c->NameRefShell);
+                            '-o', $var_layer_d->NameRefShell, $var_layer_b->NameRefShell);
 
         $var_layers->Values ($var_layer_d->NameRef);
     }
@@ -194,13 +184,12 @@ else
 
     $mk->Comment ('Some intermediate .pto project files');
     $mk->Variable ('SIMPLE_A', '$(PREFIX)_simple.a.pto');
-    $mk->Variable ('SIMPLE_B', '$(PREFIX)_simple.b.pto');
     $mk->Variable ('SIMPLE_C', '$(PREFIX)_simple.c.pto');
     $mk->Variable ('SIMPLE_D', '$(PREFIX)_simple.d.pto');
     $mk->Variable ('SIMPLE_E', '$(PREFIX)_simple.e.pto');
     $mk->Variable ('SIMPLE_F', '$(PREFIX)_simple.f.pto');
 
-    $var_tempfiles->Values ('$(SIMPLE_A)', '$(SIMPLE_B)', '$(SIMPLE_C)', '$(SIMPLE_D)', '$(SIMPLE_E)', '$(SIMPLE_F)');
+    $var_tempfiles->Values ('$(SIMPLE_A)', '$(SIMPLE_C)', '$(SIMPLE_D)', '$(SIMPLE_E)', '$(SIMPLE_F)');
 
     $mk->Comment ('All input photos');
     $mk->Variable ('INPUT_IMAGES', map {$_->Path} @{$pto->Image});
@@ -209,17 +198,11 @@ else
 
     $rule = $mk->Rule ('$(SIMPLE_A)');
     $rule->Prerequisites ('$(PROJECT_FILE)', '$(INPUT_IMAGES)');
-    $rule->Command ('$(APSC_SHELL)', '--maxdim', $pix_max, @refine, '--ransac', $ransac,
-                        '--maxmatches', $points, '$(SIMPLE_A_SHELL)', '$(PROJECT_FILE_SHELL)');
-
-    $rule = $mk->Rule ('$(SIMPLE_B)');
-    $rule->Prerequisites ('$(SIMPLE_A)', '$(INPUT_IMAGES)');
-    $rule->Command ('$(CELESTE_SHELL)', '-i', '$(SIMPLE_A_SHELL)',
-                        '-o', '$(SIMPLE_B_SHELL)');
+    $rule->Command ('$(CPFIND_SHELL)', '--celeste', '-o', '$(SIMPLE_A_SHELL)', '$(PROJECT_FILE_SHELL)');
 
     $rule = $mk->Rule ('$(SIMPLE_C)');
-    $rule->Prerequisites ('$(SIMPLE_B)');
-    $rule->Command ('$(CPCLEAN_SHELL)', '-o', '$(SIMPLE_C_SHELL)', '$(SIMPLE_B_SHELL)');
+    $rule->Prerequisites ('$(SIMPLE_A)');
+    $rule->Command ('$(CPCLEAN_SHELL)', '-o', '$(SIMPLE_C_SHELL)', '$(SIMPLE_A_SHELL)');
 
     $rule = $mk->Rule ('$(SIMPLE_D)');
     $rule->Prerequisites ('$(SIMPLE_C)', '$(PROJECT_FILE)');
@@ -275,14 +258,6 @@ immediately.
 
 Stacks are passed to align_image_stack for processing, but need to be indicated
 with 'i-line' 'j' parameters in the input project file.
-
-Control point generator parameters are set via Option lines in the input
-project:
-
-  #hugin_cpgenSize 1500
-  #hugin_cpgenNumber 25
-  #hugin_cpgenRansac true
-  #hugin_cpgenRefine false
 
 =head1 LICENSE
 

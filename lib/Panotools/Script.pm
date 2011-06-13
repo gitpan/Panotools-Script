@@ -39,7 +39,7 @@ use Math::Trig qw/:radial pi great_circle_distance/;
 
 use Storable qw/ dclone /;
 
-our $VERSION = '0.25';
+our $VERSION = '0.26';
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -797,8 +797,8 @@ sub _samestack
     my ($image0, $image1, $maxShift) = @_;
     my $minShift = 360.0 - $maxShift;
     return 1
-        if ( (abs ($image0->{y} - $image1->{y}) < $maxShift || abs ($image0->{y} - $image1->{y}) > $minShift)
-                && abs ($image0->{p} - $image1->{p}) < $maxShift );
+        if ( (abs ($image0->y - $image1->y) < $maxShift || abs ($image0->y - $image1->y) > $minShift)
+                && abs ($image0->p - $image1->p) < $maxShift );
     return 0;
 }
 

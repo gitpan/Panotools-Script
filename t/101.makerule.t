@@ -97,7 +97,14 @@ sub testfilename
 
     $rule->Targets ($filename_out);
     $rule->Prerequisites ($filename);
-    $rule->Command ('cp', '--', $filename, $filename_out);
+    if ($^O =~ /^MSWin/)
+    {
+        $rule->Command ('copy', $filename, $filename_out);
+    }
+    else
+    {
+        $rule->Command ('cp', '--', $filename, $filename_out);
+    }
 
     my $tempdir = tempdir (CLEANUP => 1);
     my $file = File::Spec->catfile ($tempdir, $filename);
@@ -112,7 +119,9 @@ sub testfilename
     close MAKE;
     chdir $tempdir;
     my $make_exe = 'make';
-    $make_exe = 'gmake' if ($^O =~ /bsd$/);
+    # On bsd/irix/solaris 'make' doesn't support escaping special characters.
+    # We need to use GNU make (gmake) on these platforms.
+    $make_exe = 'gmake' if ($^O =~ /^(.*bsd|irix|solaris|sunos)$/);
     system ($make_exe);
     return 1 if -e $filename_out;
     print $rule->Assemble;
