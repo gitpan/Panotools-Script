@@ -17,9 +17,9 @@ One or more parameters for optimisation form a 'v' line
 
 =head1 DESCRIPTION
 
-  Please note: the 'v'-line must come after the the 'i'-lines.
-  Optimization variables are listed together with the image number
-  starting at 0. There can be several v-lines.
+Please note: the 'v'-line must come after the the 'i'-lines.
+Optimization variables are listed together with the image number
+starting at 0. There can be several v-lines.
 
   y0           Optimize yaw in image 0
   p1           Optimize pitch in image 1
@@ -32,14 +32,34 @@ One or more parameters for optimisation form a 'v' line
   e1
   g1
   t1
-
-                   b and c can be equally optimized.
   X1           Optimize x-coordinate of image 1, only for PTStereo
   Y2           Optimize y-coordinate of image 2, only for PTStereo
   Z6           Optimize z-coordinate of image 6, only for PTStereo
+  TrX3         Optimise x-coordinate of image 3, mosaic/translation mode
+  TrY2         Optimise y-coordinate of image 2, mosaic/translation mode
+  TrZ1         Optimise z-coordinate of image 1, mosaic/translation mode
 
-       If a image has a parameter linked to another image only
-       need to optimize the master.
+Additionally, photometric optimisation uses the same system. although this is a
+secondary process and not simultaneous with geometric optimisation:
+
+  Eev0         Optimise Exposure (Eev) for image 0
+  Er1          Optimise red multiplier for image 1
+  Eb1          Optimise blue multiplier for image 1
+
+  Ra0          Optimise EMoR camera response for image 0
+  Rb0            note usually all EMoR parameters are optimised at the same time
+  Rc0
+  Rd0
+  Re0
+
+  Va0          Optimise Vignetting 'Va' parameter for image 0, note usually only Vb, Vc, Vd are optimised
+  Vb0          Optimise Vignetting 'Vb' parameter for image 0
+  Vc0          Optimise Vignetting 'Vc' parameter for image 0
+  Vd0          Optimise Vignetting 'Vd' parameter for image 0
+  Vx1          Optimise Vignetting centre x-position for image 1
+  Vy1          Optimise Vignetting centre y-position for image 1
+
+If a image has a parameter linked to another image only need to optimize the master.
 
 =cut
 

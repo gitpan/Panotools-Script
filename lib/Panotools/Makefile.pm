@@ -149,7 +149,7 @@ sub DoIt
     my $path_makefile = File::Spec->catfile ($tempdir, 'Makefile');
     $self->Write ($path_makefile);
     my $make_exe = 'make';
-    $make_exe = 'gmake' if ($^O =~ /^(.*bsd|irix|solaris|sunos)$/);
+    $make_exe = 'gmake' if ($^O =~ /^(.*bsd|dragonfly|irix|solaris|sunos)$/);
     system ($make_exe, '-f', $path_makefile, @_);
     return 1 if ($? == 0);
     return 0;

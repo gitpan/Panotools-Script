@@ -30,12 +30,13 @@ bin/ptodouble
 bin/ptodummy
 bin/ptofill
 bin/ptoget
-bin/ptograph
 bin/ptohalve
 bin/ptoinfo
 bin/ptoinfo-gui
 bin/ptomerge
+bin/ptomorph
 bin/ptopath
+bin/ptoreset
 bin/ptoset
 bin/ptosort
 bin/ptosplit
@@ -48,14 +49,10 @@ bin/tif2svg
 bin/tif2svg-gui
 bin/transform-pano
 Changes
-desktop/enblend-svg.desktop
 desktop/erect2qtvr-gui.desktop
 desktop/img2pto.desktop
-desktop/process-masks-gui.desktop
 desktop/ptoinfo-gui.desktop
-desktop/qtvr2erect-gui.desktop
 desktop/README
-desktop/tif2svg-gui.desktop
 doc/match-n-shift.svg
 dos/make_exe.pl
 lib/Panotools/Makefile.pm
@@ -103,6 +100,7 @@ t/103.platform.t
 t/104.metachars.t
 t/105.vars.t
 t/106.photos.t
+t/201.pano_trafo.t
 t/data/cemetery/dscn4905.jpg
 t/data/cemetery/dscn4906.jpg
 t/data/cemetery/dscn4907.jpg

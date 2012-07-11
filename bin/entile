@@ -58,7 +58,7 @@ sub entile
     }
     elsif ($w2 < $pix_tile)
     {
-        die;
+        exit;
     }
     else
     {

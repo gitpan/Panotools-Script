@@ -20,8 +20,11 @@ Optional image masks are described by a 'k' line
   i2           Set image number this mask applies to
 
   t0           Type for mask:
-                   0 - negative
-                   1 - positive
+                   0 - negative (exclude region)
+                   1 - positive (include region)
+                   2 - exclude region from all images in the same stack
+                   3 - include region from all images in the same stack
+                   4 - exclude region from all images with the same lens
 
   p"1262 2159 1402 2065 1468 2003"  List of node coordinates
                Coordinates are in pairs, at least three pairs are required

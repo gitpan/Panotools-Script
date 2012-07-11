@@ -39,7 +39,7 @@ use Math::Trig qw/:radial pi great_circle_distance/;
 
 use Storable qw/ dclone /;
 
-our $VERSION = '0.26';
+our $VERSION = '0.27';
 
 our $CLEANUP = 1;
 $CLEANUP = 0 if defined $ENV{DEBUG};
@@ -1062,6 +1062,82 @@ sub OptimalWidth
     return int (($pix_width * $factor / 16) +1) * 16;
 }
 
+=pod
+
+Hugin ships with a tool called pano_trafo for querying the forward and reverse
+transform for pixel coordinates in a PTO project.
+
+Initialise this as a service, spawns two pano_trafo processes which are only
+killed when the perl process finishes:
+
+  $pto->InitTrafo ('/path/to/project.pto');
+
+This is very unlikely to work on non-unixy systems.
+
+=cut
+
+sub InitTrafo
+{
+    my $self = shift;
+    my $path_pto = shift || return 0;
+    use IPC::Open2;
+    use Symbol;
+
+    my $pid_forward_old = $self->{trafo_forward}->{pid} || undef;
+    my $WTR_forward = gensym;
+    my $RDR_forward = gensym;
+    my $pid_forward = open2 ($RDR_forward, $WTR_forward, 'pano_trafo', $path_pto);
+    $self->{trafo_forward} = {pid => $pid_forward, WTR => $WTR_forward, RDR => $RDR_forward};
+
+    my $pid_reverse_old = $self->{trafo_reverse}->{pid} || undef;
+    my $WTR_reverse = gensym;
+    my $RDR_reverse = gensym;
+    my $pid_reverse = open2 ($RDR_reverse, $WTR_reverse, 'pano_trafo', '-r', $path_pto);
+    $self->{trafo_reverse} = {pid => $pid_reverse, WTR => $WTR_reverse, RDR => $RDR_reverse};
+
+    waitpid ($pid_forward_old, 0) if defined $pid_forward_old;
+    waitpid ($pid_reverse_old, 0) if defined $pid_reverse_old;
+}
+
+=pod
+
+Query the forward transform like so:
+
+  ($X, $Y) = $pto->Trafo ($image_no, $x, $y);
+
+=cut
+
+sub Trafo
+{
+    my $self = shift;
+    my ($image, $x, $y) = @_;
+    my $WTX = $self->{trafo_forward}->{WTR};
+    my $RDX = $self->{trafo_forward}->{RDR};
+    print $WTX join (' ', $image, $x, $y) . "\n";
+    my $result = <$RDX>;
+    chomp $result;
+    return split ' ', $result;
+}
+
+=pod
+
+Query the reverse transform like so:
+
+  ($x, $y) = $pto->TrafoReverse ($image_no, $X, $Y);
+
+=cut
+
+sub TrafoReverse
+{
+    my $self = shift;
+    my ($image, $x, $y) = @_;
+    my $WTX = $self->{trafo_reverse}->{WTR};
+    my $RDX = $self->{trafo_reverse}->{RDR};
+    print $WTX join (' ', $image, $x, $y) . "\n";
+    my $result = <$RDX>;
+    chomp $result;
+    return split ' ', $result;
+}
 
 =head1 COPYRIGHT
 

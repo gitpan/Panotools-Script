@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Panotools-Script
-version:            0.26
+version:            0.27
 abstract:           Panorama Tools scripting
 author:
     - Bruno Postle <bruno@postle.net>
@@ -29,7 +29,7 @@ no_index:
     directory:
         - t
         - inc
-generated_by:       ExtUtils::MakeMaker version 6.56
+generated_by:       ExtUtils::MakeMaker version 6.57_05
 meta-spec:
     url:      http://module-build.sourceforge.net/META-spec-v1.4.html
     version:  1.4

@@ -8,6 +8,18 @@ use File::Temp qw/tempdir/;
 use File::Spec;
 use lib 'lib';
 
+my $make_exe = 'make';
+# On bsd/irix/solaris 'make' doesn't support escaping special characters.
+# We need to use GNU make (gmake) on these platforms.
+$make_exe = 'gmake' if ($^O =~ /^(.*bsd|dragonfly|irix|solaris|sunos)$/);
+
+unless (`$make_exe -v`)
+{
+    print STDERR "make not found, skipping tests...";
+    ok(1);
+    exit;
+}
+
 use Panotools::Makefile::Rule;
 for my $file ('foo',
 'Westward Ho!',
@@ -118,10 +130,6 @@ sub testfilename
     print MAKE $rule->Assemble;
     close MAKE;
     chdir $tempdir;
-    my $make_exe = 'make';
-    # On bsd/irix/solaris 'make' doesn't support escaping special characters.
-    # We need to use GNU make (gmake) on these platforms.
-    $make_exe = 'gmake' if ($^O =~ /^(.*bsd|irix|solaris|sunos)$/);
     system ($make_exe);
     return 1 if -e $filename_out;
     print $rule->Assemble;

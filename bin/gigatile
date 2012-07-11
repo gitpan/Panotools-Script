@@ -28,6 +28,8 @@ my $path_input = shift @ARGV;
 my $pto = new Panotools::Script;
 $pto->Read ($path_input);
 
+$pto->{panorama}->{S} = join (',', '0', $pto->{panorama}->{w}, '0', $pto->{panorama}->{h}) unless defined $pto->{panorama}->{S};
+
 for my $image (@{$pto->Image})
 {
     $image->{n} = '"'. $image->Path ($path_input) .'"';

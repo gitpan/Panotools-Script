@@ -6,7 +6,10 @@ use File::Spec;
 use Panotools::Script;
 use Image::Size;
 
-my $img_erect = shift or die "usage\n  $0 equirectangular.tif";
+die "usage\n  $0 equirectangular.tif [...]" unless scalar @ARGV;
+
+for my $img_erect (@ARGV)
+{
 
 my $pto_sgraphic = $img_erect;
 $pto_sgraphic =~ s/\.([[:alnum:]]+)$/-sgraphic.pto/;
@@ -30,6 +33,8 @@ else
     $stereographic->Image->[0]->Set (w => $width, h => $height, v => 360, f => 4, r => 0, p => 0, y => 0, n => "\"$file\"");
 }
 $stereographic->Write ($pto_sgraphic);
+
+}
 
 __END__
 

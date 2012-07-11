@@ -142,6 +142,7 @@ sub Layered
     if ($longest =~ /^1\/([0-9]+)$/) {$longest = 1 / $1};
     if ($shortest =~ /^1\/([0-9]+)$/) {$shortest = 1 / $1};
     return 0 unless $longest or $shortest;
+    return 0 if $shortest == 0;
     return 0 if $longest / $shortest < $factor;
     return 1;
 }
@@ -160,7 +161,7 @@ sub Speeds
     my $speeds = {};
     for my $image (@{$self})
     {
-        my $et = $image->{exif}->{ExposureTime} || $image->{exif}->{ShutterSpeed} || 0;
+        my $et = $image->{exif}->{ShutterSpeedValue} || $image->{exif}->{ExposureTime} || $image->{exif}->{ShutterSpeed} || 0;
         $speeds->{$et} = 'TRUE';
     }
     return [sort {_longer ($b, $a)} keys (%{$speeds})];

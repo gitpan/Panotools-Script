@@ -1,5 +1,17 @@
 Revision history for Panotools::Script.
 
+0.27
+    - remove linux desktop entries for tif2svg-gui enblend-svg process-masks-gui qtvr2erect-gui
+    - apparently there is a bsd called dragonfly
+    - new tool: ptoreset - reset photometric parameters in a .pto file
+    - fix gigatile bug with uncropped output (Emad ud din Bhatt)
+    - remove ptograph as superceded by Hugin layout mode
+    - skip Panotools::Makefile tests if no suitable make executable found
+    - some methods for fast querying of transformation coordinates via pano_trafo
+    - new tool: ptomorph - distort photos before stitching
+    - try and fix division by zero error when EXIF ExposureTime = 0 (Tobias Mueller)
+    - erect2planet and erect2mercator now take multiple input files
+
 0.26
     - ptoanchor now uses cpfind instead of autopano-sift-c, requires Hugin 2010.4.0
     - Panotools::Makefile fixes for irix/solaris
