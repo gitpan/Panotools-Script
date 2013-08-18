@@ -26,3 +26,4 @@ like ($variable->Assemble, '/ e1/', 'optimise image-1 e-parameter written as e1'
 like ($variable->Assemble, '/ e2/', 'optimise image-2 e-parameter written as e2');
 unlike ($variable->Assemble, '/ e0/', 'no optimise image-0 e-parameter not written');
 
+ok ($variable->Report (0));

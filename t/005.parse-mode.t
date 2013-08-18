@@ -33,4 +33,6 @@ like ($mode->Assemble, '/ p0/', 'no panorama creation set as p0');
 like ($mode->Assemble, '/ f0/', 'fast transform set as f0');
 unlike ($mode->Assemble, '/test junk/', 'invalid entries removed');
 
+ok ($mode->Report);
+
 #warn $mode->Assemble;

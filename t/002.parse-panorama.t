@@ -36,3 +36,5 @@ like ($panorama->Assemble, '/ f2/', 'projection equirectangular written as f2');
 like ($panorama->Assemble, '/ b1/', 'brightness correction written as b1');
 like ($panorama->Assemble, '/ u20/', '20 pixel feather  written as u20');
 unlike ($panorama->Assemble, '/test junk/', 'invalid entries removed');
+
+ok ($panorama->Report);

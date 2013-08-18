@@ -6,8 +6,11 @@ use Getopt::Long;
 use Pod::Usage;
 use Panotools::Script;
 use Panotools::Photos;
+use Text::ParseWords;
+use Math::Trig;
 
 my $path_oto;
+my $path_csv;
 my $pix_max = 1600;
 my $points = 25;
 my $noransac = 0;
@@ -22,6 +25,7 @@ my $clean = 0;
 my $help = 0;
 
 GetOptions ('o|output=s' => \$path_oto,
+            'i|input=s' => \$path_csv,
             's|size=i' => \$pix_max,
             'p|points=i' => \$points,
             'n|noransac' => \$noransac,
@@ -36,12 +40,24 @@ GetOptions ('o|output=s' => \$path_oto,
             'h|help' => \$help);
 
 # code assumes images are sorted
-@ARGV = sort @ARGV;
+my @path_photos = sort @ARGV;
+
+# if csv file is specified, parse and replace list of photos
+my @csv;
+if ($path_csv)
+{
+    open (CSV, '<'. $path_csv);
+    my @lines = (<CSV>);
+    chomp @lines;
+    close CSV;
+    @csv = map {[parse_line ('\s*,\s*', 0, $_)]} @lines;
+    @path_photos = map {$_->[0]} @csv;
+}
 
 pod2usage (-verbose => 2) if $help;
-pod2usage (2) unless (scalar @ARGV > 1);
+pod2usage (2) unless (scalar @path_photos > 1);
 
-my $photos_all = new Panotools::Photos (@ARGV);
+my $photos_all = new Panotools::Photos (@path_photos);
 
 $deg_fov = 50 unless defined $deg_fov;
 # decimal separator workaround
@@ -52,10 +68,22 @@ my $oto = new Panotools::Script;
 my @AverageRGB = $photos_all->AverageRGB;
 
 my $sum_Eev;
-for my $id (0 .. scalar @ARGV -1)
+for my $id (0 .. scalar @path_photos -1)
 {
     my $image = new Panotools::Script::Line::Image;
     my $photo = $photos_all->[$id];
+    my $fl = $photos_all->FocalLength ($id);
+    my $deg_fov_local;
+    my $mm_width = 35;
+    $mm_width /= 1.5 if ($photo->{exif}->{ImageWidth} < $photo->{exif}->{ImageHeight});
+    if (defined $fl and $projection == 0)
+    {
+        $deg_fov_local = atan ($mm_width/2/$fl) * 2 * 57.29577951;
+    }
+    elsif (defined $fl and ($projection == 2 or $projection == 3))
+    {
+        $deg_fov_local = ($mm_width/2/$fl) * 2 * 57.29577951;
+    }
     %{$image} = (
         n => '"'. $photo->{path} .'"',
         w => $photo->{exif}->{ImageWidth},
@@ -66,13 +94,19 @@ for my $id (0 .. scalar @ARGV -1)
         Va => 1, Vb => 0, Vc => 0, Vd => 0, Vx => 0, Vy => 0,
         f => $projection,
         Eev => $photos_all->Eev ($id),
-        v => ($photos_all->FOV ($id) || $deg_fov)
+        v => ($deg_fov_local || $deg_fov)
     );
     $image->{n} = '"'. $image->Path .'"';
     $image->{S} = $crop_s if defined $crop_s;
     $sum_Eev += $photos_all->Eev ($id);
     $image->{Er} = $photo->{exif}->{RedBalance} / $AverageRGB[0] if $photo->{exif}->{RedBalance};
     $image->{Eb} = $photo->{exif}->{BlueBalance} / $AverageRGB[2] if $photo->{exif}->{BlueBalance};
+    $image->{y} = $csv[$id]->[1] if (defined $csv[$id] and defined $csv[$id]->[1]);
+    $image->{p} = $csv[$id]->[2] if (defined $csv[$id] and defined $csv[$id]->[2]);
+    $image->{r} = $csv[$id]->[3] if (defined $csv[$id] and defined $csv[$id]->[3]);
+    $image->{TrX} = $csv[$id]->[4] if (defined $csv[$id] and defined $csv[$id]->[4]);
+    $image->{TrY} = $csv[$id]->[5] if (defined $csv[$id] and defined $csv[$id]->[5]);
+    $image->{TrZ} = $csv[$id]->[6] if (defined $csv[$id] and defined $csv[$id]->[6]);
 
     if ($photos_all->Bracketed)
     {
@@ -158,13 +192,7 @@ match-n-shift [options] --output project.pto image1 image2 [...]
 
  Options:
   -o | --output name    Filename of created panorama project
-  -s | --size number    Downsize images until width and height is
-                          smaller than number, default 1600
-  -p | --points number  Number of generated control points between,
-                          each pair, default: 25
-  -n | --noransac       No ransac detection, useful for fisheye images
-  -r | --refine         Refine the found control points using the
-                          original images, delete unrefinable.
+  -i | --input name     Filename of CSV file specifying input images (optional, see below)
   -f | --projection     Panotools style input projection number. Use
                           0 for rectilinear (default), 2 for circular fisheye and
                           3 for full-frame fisheye images.  Note, this has to be
@@ -178,10 +206,55 @@ match-n-shift [options] --output project.pto image1 image2 [...]
   -a | --align          Generate control points (default no).
   -h | --help           Outputs help documentation.
 
+ Deprecated options (have no effect when using cpfind):
+  -s | --size number    Downsize images until width and height is
+                          smaller than number, default 1600
+  -p | --points number  Number of generated control points between,
+                          each pair, default: 25
+  -n | --noransac       No ransac detection, useful for fisheye images
+  -r | --refine         Refine the found control points using the
+                          original images, delete unrefinable.
+
 =head1 DESCRIPTION
 
 B<match-n-shift> takes a list of image files and creates a hugin compatible
-project file optionally containing control points linking the images together.
+project file (optionally containing control points linking the images together,
+though there are better ways of doing this).
+
+As much information as possible is extracted from photo EXIF data.  So photo
+orientation, exposure, angle of view and white balance will all be initialised
+if possible.
+
+An optional input file can be chosen with the --input option, this can be a
+simple list of photo filenames, or full paths, one per line:
+
+  DSC_0001.JPG
+  DSC_0002.JPG
+  DSC_0003.JPG
+  DSC_0004.JPG
+
+..or a CSV file specifying "filename, yaw, pitch, roll" (in degrees):
+
+  DSC_0001.JPG,0,20,90
+  DSC_0002.JPG,90,-20,90
+  DSC_0003.JPG,180,20,90
+  DSC_0004.JPG,-180,-20,90
+
+..or optionally specify XYZ translation parameters as well:
+
+  DSC_0001.JPG, 0, 20, 0, 0.5, 0.0, 1.0
+  DSC_0002.JPG, 0, 20, 0, 1.4, 0.0, 1.0
+  DSC_0003.JPG, 0, 20, 0, 2.3, 0.0, 1.0
+  DSC_0004.JPG, 0, 20, 0, 3.2, 0.0, 1.0
+
+If the roll field is ommitted then it will be set to zero or any value
+obtainable from EXIF data, similarly if the pitch field is ommitted then pitch
+will be set to zero.  So this should also work:
+
+  DSC_0001.JPG,0
+  DSC_0002.JPG,90
+  DSC_0003.JPG,180
+  DSC_0004.JPG,-180
 
 =head1 LICENSE
 

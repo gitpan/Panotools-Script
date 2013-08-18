@@ -70,6 +70,8 @@ Basically the same format as an 'o' line.
 
   TrX,TrY,TrZ  Translation on x axis, y axis, z axis
 
+  Tpy,Tpp      yaw and pitch of remapping plane for translation
+
   Te0,Te1,Te2,Te3  Test parameters
 
   Vm           vignetting correction mode (default 0):
@@ -124,9 +126,9 @@ sub _defaults
     %{$self} = (a => 0, b => 0, c => 0, d => 0, e => 0, r => 0, p => 0, y => 0);
 }
 
-sub _valid { return '^([abcdefghjnprtvwy]|[SCXYZ]|K[0-2][ab]|V[abcdfmxy]|Eev|E[rb]|Te[0123]|Tr[XYZ]|Ti[XYZS]|R[abcde])(.*)' }
+sub _valid { return '^([abcdefghjnprtvwy]|[SCXYZ]|K[0-2][ab]|V[abcdfmxy]|Eev|E[rb]|Tp[yp]|Te[0123]|Tr[XYZ]|Ti[XYZS]|R[abcde])(.*)' }
 
-sub _valid_ptoptimizer { return '^([abcdefghnprtvwySC]|Te[0123]|Tr[XYZ]|Ti[XYZS])(.*)' }
+sub _valid_ptoptimizer { return '^([abcdefghnprtvwySC]|Tp[yp]|Te[0123]|Tr[XYZ]|Ti[XYZS])(.*)' }
 
 sub _sanitise_ptoptimizer
 {

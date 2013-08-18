@@ -1,5 +1,14 @@
 Revision history for Panotools::Script.
 
+0.28
+    - new tool: nona-svg - stitch a vector panorama image
+    - new tool: pto2gpano - add GPano XMP metadata
+    - ptovariable: support XYZ translation parameters
+    - match-n-shift: create a project based on a CSV list input file
+    - support new Tpy,Tpp yaw and pitch of remapping plane for translation
+    - match-n-shift try and calculate fov correctly for portrait and fisheye setups
+    - fix bug that failed tests with perl 5.17.*
+
 0.27
     - remove linux desktop entries for tif2svg-gui enblend-svg process-masks-gui qtvr2erect-gui
     - apparently there is a bsd called dragonfly

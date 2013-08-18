@@ -16,10 +16,12 @@ bin/jpeg2qtvr
 bin/lens-submit
 bin/match-n-shift
 bin/nona-mask
+bin/nona-svg
 bin/pafextract
 bin/panostart
 bin/process-masks
 bin/process-masks-gui
+bin/pto2gpano
 bin/pto2mk2
 bin/ptoanchor
 bin/ptobind

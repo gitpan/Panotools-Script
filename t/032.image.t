@@ -38,3 +38,4 @@ $vec = $image->To_Cartesian ($p, [119.5,160]);
 
 my $distance = $p->Control->[0]->Distance ($p);
 
+ok ($image->Report);

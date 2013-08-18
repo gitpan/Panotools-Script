@@ -164,16 +164,14 @@ sub Speeds
         my $et = $image->{exif}->{ShutterSpeedValue} || $image->{exif}->{ExposureTime} || $image->{exif}->{ShutterSpeed} || 0;
         $speeds->{$et} = 'TRUE';
     }
-    return [sort {_longer ($b, $a)} keys (%{$speeds})];
+    return [sort {_normalise ($b) <=> _normalise ($a)} keys %{$speeds}];
 }
 
-sub _longer
+sub _normalise
 {
-    my ($a, $b) = @_;
-    if ($a =~ /^1\/([0-9]+)$/) {$a = 1 / $1};
-    if ($b =~ /^1\/([0-9]+)$/) {$b = 1 / $1};
-    return 0 if ($b > $a);
-    return 1;
+    my $number = shift;
+    if ($number =~ /^1\/([0-9]+)$/) {$number = 1 / $1};
+    return $number;
 }
 
 =pod
@@ -241,7 +239,7 @@ sub AverageInterval
     return $totaltime / (scalar @{$self} -1);
 }
 
-=pod
+=item FOV FocalLength Rotation
 
 Get the Angle of View in degrees of the first photo:
 
@@ -261,8 +259,18 @@ sub FOV
     my $index = 0;
     $index = shift if @_;
     my $fov = $self->[$index]->{exif}->{'FOV'};
-    $fov =~ s/[^0-9.]*$// if defined $fov;
+    $fov =~ s/ .*$// if defined $fov;
     return $fov;
+}
+
+sub FocalLength
+{
+    my $self = shift;
+    my $index = 0;
+    $index = shift if @_;
+    my $fl = $self->[$index]->{exif}->{'FocalLengthIn35mmFormat'};
+    $fl =~ s/ .*$// if defined $fl;
+    return $fl;
 }
 
 sub Rotation

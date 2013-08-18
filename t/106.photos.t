@@ -47,14 +47,15 @@ $photos->[6] = {path => 'IMG_0007.JPG', exif => {ExposureTime => '1/2'}};
 $photos->[7] = {path => 'IMG_0008.JPG', exif => {ExposureTime => '1/4'}};
 $photos->[8] = {path => 'IMG_0009.JPG', exif => {ExposureTime => '2'}};
 
-is ((join ':', @{$photos->Speeds}), '2:1/2:1/4');
+my $speeds = $photos->Speeds;
+is ((join ':', @{$speeds}), '2:1/2:1/4');
 ok ($photos->Bracketed == 1);
 ok ($photos->Layered == 0);
 
 # http://www.cpantesters.org/cpan/report/6a000430-b5c0-11df-af27-ffdf23310e15
-ok (Panotools::Photos::_longer ('2', '1/4'), '_longer');
-ok (Panotools::Photos::_longer ('1/2', '1/4'), '_longer');
-ok (Panotools::Photos::_longer ('2', '1/2'), '_longer');
+is (Panotools::Photos::_normalise ('2'), 2, '_normalise');
+is (Panotools::Photos::_normalise ('1/2'), 0.5, '_normalise');
+is (Panotools::Photos::_normalise ('1/4'), 0.25, '_normalise');
 
 # sequences have to be in strict order
 $photos->[6] = {path => 'IMG_0007.JPG', exif => {ExposureTime => '1/4'}};
@@ -75,13 +76,6 @@ delete $photos->[8];
 ok ($photos->Bracketed == 0);
 ok ($photos->Layered == 1);
 is ((join ':', @{$photos->Speeds}), '2:1/2:1/4');
-
-ok (Panotools::Photos::_longer (4, 2));
-ok (Panotools::Photos::_longer (40, 5));
-ok (Panotools::Photos::_longer (4, '1/2'));
-ok (Panotools::Photos::_longer ('1/4', '1/200'));
-ok (Panotools::Photos::_longer (4, 0));
-ok (Panotools::Photos::_longer ('1/4', 0));
 
 is ((join ':', $photos->AverageRGB), '1:1:1');
 

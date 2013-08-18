@@ -38,6 +38,8 @@ starting at 0. There can be several v-lines.
   TrX3         Optimise x-coordinate of image 3, mosaic/translation mode
   TrY2         Optimise y-coordinate of image 2, mosaic/translation mode
   TrZ1         Optimise z-coordinate of image 1, mosaic/translation mode
+  Tpp1         Optimise pitch of picture plane of image 1, mosaic/translation mode
+  Tpy1         Optimise yaw of picture plane of image 1, mosaic/translation mode
 
 Additionally, photometric optimisation uses the same system. although this is a
 secondary process and not simultaneous with geometric optimisation:
@@ -63,7 +65,7 @@ If a image has a parameter linked to another image only need to optimize the mas
 
 =cut
 
-sub _valid { return '^([abcdegprtvyXYZ]|Te[0123]|Tr[XYZ]|Ti[XYZS]|Eev|Er|Eb|Ra|Rb|Rc|Rd|Re|Va|Vb|Vc|Vd|Vx|Vy)(.*)' }
+sub _valid { return '^([abcdegprtvyXYZ]|Te[0123]|Tp[py]|Tr[XYZ]|Ti[XYZS]|Eev|Er|Eb|Ra|Rb|Rc|Rd|Re|Va|Vb|Vc|Vd|Vx|Vy)(.*)' }
 
 sub Identifier
 {
@@ -76,10 +78,10 @@ sub Parse
     my $self = shift;
     my $string = shift || return 0;
     my $valid = $self->_valid;
-    my @res = $string =~ / ([a-zERV]+[0-9]+)/g;
+    my @res = $string =~ / ([a-zA-Z]+[0-9]+)/g;
     for my $token (grep { defined $_ } @res)
     {
-        my ($param, $image) = $token =~ /([a-zERV]+)([0-9]+)/;
+        my ($param, $image) = $token =~ /([a-zA-Z]+)([0-9]+)/;
         next unless defined $image;
         $self->{$image}->{$param} = 1;
     }

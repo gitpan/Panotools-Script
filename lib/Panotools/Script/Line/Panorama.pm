@@ -36,6 +36,9 @@ Panorama parameters are described by a 'p' line
                   16 - Equirectangular Panini
                   17 - Biplane
                   18 - Triplane
+                  19 - Panini_General
+                  20 - Thoby
+                  21 - Hammer
 
   v360         horizontal field of view of panorama (default 360)
   nPICT        Panorama file format, one of:

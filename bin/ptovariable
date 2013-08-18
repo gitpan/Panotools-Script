@@ -13,6 +13,12 @@ my $yaw = 0;
 my @r;
 my @p;
 my @y;
+my $translations;
+my @TrX;
+my @TrY;
+my @TrZ;
+my @Tpp;
+my @Tpy;
 my $view = 0;
 my $barrel = 0;
 my $centre = 0;
@@ -34,6 +40,12 @@ GetOptions ('positions' => \$positions,
             'r=i' => \@r,
             'p=i' => \@p,
             'y=i' => \@y,
+            'translations' => \$translations,
+            'TrX=i' => \@TrX,
+            'TrY=i' => \@TrY,
+            'TrZ=i' => \@TrZ,
+            'Tpp=i' => \@Tpp,
+            'Tpy=i' => \@Tpy,
             'vignetting' => \$vignetting,
             'vignetting-centre' => \$vignetting_centre,
             'response' => \$response,
@@ -81,6 +93,10 @@ for my $index (1 .. scalar @{$pto->Image} -1)
     $variable->{$index}->{p} = $positions || $pitch;
     $variable->{$index}->{y} = $positions || $yaw;
 
+    $variable->{$index}->{TrX} = $translations;
+    $variable->{$index}->{TrY} = $translations;
+    $variable->{$index}->{TrZ} = $translations;
+
     $variable->{$index}->{Eev} = $exposure;
 
     $variable->{$index}->{Er} = $white_balance;
@@ -90,6 +106,13 @@ for my $index (1 .. scalar @{$pto->Image} -1)
 $variable->{$_}->{r} = 1 for (@r);
 $variable->{$_}->{p} = 1 for (@p);
 $variable->{$_}->{y} = 1 for (@y);
+
+$variable->{$_}->{TrX} = 1 for (@TrX);
+$variable->{$_}->{TrY} = 1 for (@TrY);
+$variable->{$_}->{TrZ} = 1 for (@TrZ);
+
+$variable->{$_}->{Tpp} = 1 for (@Tpp);
+$variable->{$_}->{Tpy} = 1 for (@Tpy);
 
 $pto->Write ($path_output);
 
@@ -111,6 +134,10 @@ ptovariable [options] project.pto
        -r <num> <num> <..>  Optimise roll for specified images
        -p <num> <num> <..>  Optimise pitch for specified images
        -y <num> <num> <..>  Optimise yaw for specified images
+       --translations       Optimise XYZ mosaic translations for all images except anchor
+       -TrX <num> <..>      Optimise X translation for specified images
+       -TrY <num> <..>      Optimise Y translation for specified images
+       -TrZ <num> <..>      Optimise Z translation for specified images
        --view               Optimise angle of view
        --barrel             Optimise barrel distortion
        --centre             Optimise optical centre
